@@ -214,7 +214,7 @@ const FacilityDetail: React.FC = () => {
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute top-4 right-4 flex gap-2">
-                  {facility.images.slice(1, 4).map((image, index) => (
+                  {facility.images.slice(1, 4).map((image: string, index: number) => (
                     <div key={index} className="w-16 h-16 rounded-lg overflow-hidden border-2 border-white">
                       <img src={image} alt="" className="w-full h-full object-cover" />
                     </div>
@@ -301,7 +301,7 @@ const FacilityDetail: React.FC = () => {
                       <div>
                         <h3 className="text-xl font-bold text-qc-text mb-6">Available Courts</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {facility.courts.map((court) => (
+                          {facility.courts.map((court: any) => (
                             <div key={court._id} className="border border-gray-200 rounded-lg overflow-hidden">
                               <div className="relative h-48">
                                 <img
@@ -348,7 +348,7 @@ const FacilityDetail: React.FC = () => {
                       <div>
                         <h3 className="text-xl font-bold text-qc-text mb-6">Amenities & Facilities</h3>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                          {facility.amenities.map((amenity) => (
+                          {facility.amenities.map((amenity: string) => (
                             <div key={amenity} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                               <span className="text-lg">{getAmenityIcon(amenity)}</span>
                               <span className="font-medium text-qc-text">{amenity}</span>
@@ -372,7 +372,7 @@ const FacilityDetail: React.FC = () => {
                         </div>
                         
                         <div className="space-y-4">
-                          {facility.reviews.map((review) => (
+                          {facility.reviews.map((review: any) => (
                             <div key={review.id} className="border border-gray-200 rounded-lg p-4">
                               <div className="flex items-start justify-between mb-3">
                                 <div className="flex items-center gap-3">

@@ -134,6 +134,7 @@ const VenueCard: React.FC<VenueCardProps> = ({ venue, onSelect, compact = false 
               className={`bg-qc-accent text-white font-medium rounded-qc-radius hover:bg-qc-accent/90 transition-colors ${
                 compact ? 'px-3 py-1 text-xs' : 'px-4 py-2 text-sm'
               }`}
+              onClick={(e) => e.stopPropagation()}
             >
               Book Now
             </Link>

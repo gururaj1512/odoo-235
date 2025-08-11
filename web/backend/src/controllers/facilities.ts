@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Facility from '../models/Facility';
+import Court from '../models/Court';
 import cloudinary from '../config/cloudinary';
 import { AuthRequest } from '../types';
 import fs from 'fs';
@@ -8,20 +9,28 @@ import path from 'path';
 // @desc    Get all facilities
 // @route   GET /api/facilities
 // @access  Public
-export const getFacilities = async (req: Request, res: Response): Promise<void> => {
+export const getFacilities = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { sport, category, search, sort } = req.query;
+    const { 
+      sport, 
+      category, 
+      search, 
+      sort, 
+      page = 1, 
+      limit = 12,
+      minPrice,
+      maxPrice,
+      amenities,
+      radius,
+      timeSlot
+    } = req.query;
     
     let query: any = { isActive: true };
     
-    // Filter by sport
-    if (sport) {
-      query['courts.sport'] = sport;
-    }
-    
-    // Filter by category
-    if (category) {
-      query['courts.sportType'] = category;
+    // Only show approved facilities to regular users
+    // Admins can see all facilities including pending ones
+    if (!req.user || req.user.role !== 'Admin') {
+      query.approvalStatus = 'approved';
     }
     
     // Search functionality
@@ -29,29 +38,116 @@ export const getFacilities = async (req: Request, res: Response): Promise<void> 
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
-        { 'location.city': { $regex: search, $options: 'i' } }
+        { 'location.city': { $regex: search, $options: 'i' } },
+        { 'location.state': { $regex: search, $options: 'i' } }
       ];
+    }
+
+    // Price range filtering
+    if (minPrice || maxPrice) {
+      query['pricing.basePrice'] = {};
+      if (minPrice) query['pricing.basePrice'].$gte = Number(minPrice);
+      if (maxPrice) query['pricing.basePrice'].$lte = Number(maxPrice);
+    }
+
+    // Amenities filtering
+    if (amenities) {
+      const amenitiesArray = Array.isArray(amenities) ? amenities : [amenities];
+      query.amenities = { $in: amenitiesArray };
     }
     
     let sortOption: any = { createdAt: -1 };
     if (sort === 'rating') sortOption = { rating: -1 };
-    if (sort === 'price') sortOption = { 'courts.pricePerHour': 1 };
+    if (sort === 'price') sortOption = { 'pricing.basePrice': 1 };
     if (sort === 'name') sortOption = { name: 1 };
+    if (sort === 'distance') sortOption = { 'location.city': 1 }; // Simple distance sort by city
 
-    const facilities = await Facility.find(query)
-      .populate('owner', 'name email')
-      .populate({
-        path: 'courts',
-        populate: {
-          path: 'sport',
-          select: 'name icon category'
+    // Pagination
+    const pageNum = Number(page);
+    const limitNum = Number(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Build aggregation pipeline
+    const pipeline: any[] = [
+      { $match: query },
+      {
+        $lookup: {
+          from: 'courts',
+          localField: '_id',
+          foreignField: 'facility',
+          as: 'courts'
         }
-      })
-      .sort(sortOption);
+      }
+    ];
+
+    // Filter by sport if specified
+    if (sport && sport !== 'all') {
+      pipeline.push({
+        $match: {
+          'courts.sportType': sport
+        }
+      });
+    }
+
+    // Filter by category if specified
+    if (category && category !== 'all') {
+      pipeline.push({
+        $match: {
+          'courts.sportType': category
+        }
+      });
+    }
+
+    // Add sorting
+    pipeline.push({ $sort: sortOption });
+
+    // Get total count for pagination
+    const countPipeline = [...pipeline, { $count: 'total' }];
+    const countResult = await Facility.aggregate(countPipeline);
+    const totalFacilities = countResult.length > 0 ? countResult[0].total : 0;
+
+    // Add pagination
+    pipeline.push({ $skip: skip });
+    pipeline.push({ $limit: limitNum });
+
+    // Add population for owner
+    pipeline.push({
+      $lookup: {
+        from: 'users',
+        localField: 'owner',
+        foreignField: '_id',
+        as: 'owner'
+      }
+    });
+    pipeline.push({
+      $unwind: '$owner'
+    });
+    pipeline.push({
+      $project: {
+        'owner.password': 0,
+        'owner.resetPasswordToken': 0,
+        'owner.resetPasswordExpire': 0
+      }
+    });
+
+    const facilities = await Facility.aggregate(pipeline);
+
+    // Calculate pagination info
+    const totalPages = Math.ceil(totalFacilities / limitNum);
+    const hasNextPage = pageNum < totalPages;
+    const hasPrevPage = pageNum > 1;
 
     res.status(200).json({
       success: true,
       count: facilities.length,
+      totalCount: totalFacilities,
+      pagination: {
+        currentPage: pageNum,
+        totalPages,
+        hasNextPage,
+        hasPrevPage,
+        limit: limitNum
+      },
       data: facilities
     });
   } catch (error: any) {
@@ -99,7 +195,7 @@ export const getFacility = async (req: Request, res: Response): Promise<void> =>
 // @access  Private (Owner only)
 export const createFacility = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { name, description, location, pricing, amenities } = req.body;
+    const { name, description, location, pricing, amenities, courts } = req.body;
     const files = req.files as Express.Multer.File[];
     
     console.log('Files received:', files?.length || 0);
@@ -162,6 +258,7 @@ export const createFacility = async (req: AuthRequest, res: Response): Promise<v
       'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=800&h=600&fit=crop'
     ];
 
+    // Create the facility
     const facility = await Facility.create({
       name,
       description,
@@ -177,9 +274,35 @@ export const createFacility = async (req: AuthRequest, res: Response): Promise<v
       owner: req.user!._id
     });
 
+    // Create courts if provided
+    if (courts && Array.isArray(courts) && courts.length > 0) {
+      const createdCourts = [];
+      
+      for (const courtData of courts) {
+        const court = await Court.create({
+          name: courtData.name,
+          sportType: courtData.sportType,
+          surfaceType: courtData.surfaceType,
+          pricePerHour: courtData.pricePerHour,
+          images: ['https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=400&h=300&fit=crop'],
+          facility: facility._id,
+          isAvailable: true
+        });
+
+        createdCourts.push(court);
+      }
+
+      console.log(`Created ${createdCourts.length} courts for facility ${facility._id}`);
+    }
+
+    // Populate the facility with courts for response
+    const populatedFacility = await Facility.findById(facility._id)
+      .populate('courts')
+      .populate('owner', 'name email');
+
     res.status(201).json({
       success: true,
-      data: facility
+      data: populatedFacility
     });
   } catch (error: any) {
     res.status(400).json({

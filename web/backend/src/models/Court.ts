@@ -8,22 +8,17 @@ const courtSchema = new Schema<ICourtDocument>({
     type: String,
     required: [true, 'Please add a court name'],
     trim: true,
-    maxlength: [50, 'Name cannot be more than 50 characters']
+    maxlength: [100, 'Court name cannot be more than 100 characters']
   },
   sportType: {
     type: String,
     required: [true, 'Please add a sport type'],
-    enum: ['Tennis', 'Basketball', 'Badminton', 'Squash', 'Volleyball', 'Other']
-  },
-  sport: {
-    type: Schema.Types.ObjectId,
-    ref: 'Sport',
-    required: [true, 'Please specify the sport']
+    enum: ['Tennis', 'Basketball', 'Badminton', 'Squash', 'Volleyball', 'Football', 'Cricket', 'Table Tennis', 'Other']
   },
   surfaceType: {
     type: String,
     required: [true, 'Please add a surface type'],
-    enum: ['Hard Court', 'Clay', 'Grass', 'Synthetic', 'Wood', 'Other']
+    enum: ['Hard Court', 'Clay', 'Grass', 'Synthetic', 'Wood', 'Carpet', 'Other']
   },
   pricePerHour: {
     type: Number,
@@ -31,15 +26,14 @@ const courtSchema = new Schema<ICourtDocument>({
     min: [0, 'Price cannot be negative']
   },
   images: [{
-    type: String,
-    required: [true, 'Please add at least one image']
+    type: String
   }],
   isAvailable: {
     type: Boolean,
     default: true
   },
   facility: {
-    type: Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId as any,
     ref: 'Facility',
     required: true
   }

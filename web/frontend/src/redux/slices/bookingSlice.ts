@@ -1,10 +1,25 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { Booking, CreateBookingData } from '@/types';
+import { Booking, CreateBookingData, ApiResponse } from '@/types';
 import { bookingApi } from '@/services/api';
 
 interface BookingState {
   bookings: Booking[];
   currentBooking: Booking | null;
+  ownerBookings: {
+    bookings: Booking[];
+    pagination: any;
+    summary: any;
+    loading: boolean;
+    error: string | null;
+  };
+  analytics: {
+    bookingTrends: any[];
+    facilityAnalytics: any[];
+    sportAnalytics: any[];
+    statusDistribution: any[];
+    loading: boolean;
+    error: string | null;
+  };
   loading: boolean;
   error: string | null;
 }
@@ -12,8 +27,23 @@ interface BookingState {
 const initialState: BookingState = {
   bookings: [],
   currentBooking: null,
+  ownerBookings: {
+    bookings: [],
+    pagination: null,
+    summary: null,
+    loading: false,
+    error: null
+  },
+  analytics: {
+    bookingTrends: [],
+    facilityAnalytics: [],
+    sportAnalytics: [],
+    statusDistribution: [],
+    loading: false,
+    error: null
+  },
   loading: false,
-  error: null,
+  error: null
 };
 
 // Async thunks
@@ -29,26 +59,35 @@ export const fetchBookings = createAsyncThunk(
   }
 );
 
-export const cancelBooking = createAsyncThunk(
-  'bookings/cancelBooking',
-  async (bookingId: string, { rejectWithValue }) => {
+export const fetchOwnerBookings = createAsyncThunk(
+  'bookings/fetchOwnerBookings',
+  async (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    facilityId?: string;
+    date?: string;
+  }, { rejectWithValue }) => {
     try {
-      const response = await bookingApi.cancelBooking(bookingId);
+      const response = await bookingApi.getOwnerBookings(params);
       return response;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.error || 'Failed to cancel booking');
+      return rejectWithValue(error.response?.data?.error || 'Failed to fetch owner bookings');
     }
   }
 );
 
-export const fetchBooking = createAsyncThunk(
-  'bookings/fetchBooking',
-  async (id: string, { rejectWithValue }) => {
+export const fetchOwnerAnalytics = createAsyncThunk(
+  'bookings/fetchOwnerAnalytics',
+  async (params?: {
+    period?: 'week' | 'month' | 'year';
+    facilityId?: string;
+  }, { rejectWithValue }) => {
     try {
-      const response = await bookingApi.getBooking(id);
+      const response = await bookingApi.getOwnerBookingAnalytics(params);
       return response;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.error || 'Failed to fetch booking');
+      return rejectWithValue(error.response?.data?.error || 'Failed to fetch analytics');
     }
   }
 );
@@ -65,11 +104,23 @@ export const createBooking = createAsyncThunk(
   }
 );
 
-export const updateBookingStatus = createAsyncThunk(
-  'bookings/updateBookingStatus',
-  async ({ id, status }: { id: string; status: string }, { rejectWithValue }) => {
+export const cancelBooking = createAsyncThunk(
+  'bookings/cancelBooking',
+  async (bookingId: string, { rejectWithValue }) => {
     try {
-      const response = await bookingApi.updateBookingStatus(id, status);
+      const response = await bookingApi.cancelBooking(bookingId);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.error || 'Failed to cancel booking');
+    }
+  }
+);
+
+export const updateBookingStatusByOwner = createAsyncThunk(
+  'bookings/updateBookingStatusByOwner',
+  async ({ bookingId, data }: { bookingId: string; data: { status: string; reason?: string } }, { rejectWithValue }) => {
+    try {
+      const response = await bookingApi.updateBookingStatusByOwner(bookingId, data);
       return response;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.error || 'Failed to update booking status');
@@ -87,8 +138,11 @@ const bookingSlice = createSlice({
     clearCurrentBooking: (state) => {
       state.currentBooking = null;
     },
-    clearBookings: (state) => {
-      state.bookings = [];
+    clearOwnerBookingsError: (state) => {
+      state.ownerBookings.error = null;
+    },
+    clearAnalyticsError: (state) => {
+      state.analytics.error = null;
     },
   },
   extraReducers: (builder) => {
@@ -106,18 +160,36 @@ const bookingSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
-      // Fetch Booking
-      .addCase(fetchBooking.pending, (state) => {
-        state.loading = true;
-        state.error = null;
+      // Fetch Owner Bookings
+      .addCase(fetchOwnerBookings.pending, (state) => {
+        state.ownerBookings.loading = true;
+        state.ownerBookings.error = null;
       })
-      .addCase(fetchBooking.fulfilled, (state, action) => {
-        state.loading = false;
-        state.currentBooking = action.payload.data || null;
+      .addCase(fetchOwnerBookings.fulfilled, (state, action) => {
+        state.ownerBookings.loading = false;
+        state.ownerBookings.bookings = action.payload.data || [];
+        state.ownerBookings.pagination = action.payload.pagination || null;
+        state.ownerBookings.summary = action.payload.summary || null;
       })
-      .addCase(fetchBooking.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
+      .addCase(fetchOwnerBookings.rejected, (state, action) => {
+        state.ownerBookings.loading = false;
+        state.ownerBookings.error = action.payload as string;
+      })
+      // Fetch Owner Analytics
+      .addCase(fetchOwnerAnalytics.pending, (state) => {
+        state.analytics.loading = true;
+        state.analytics.error = null;
+      })
+      .addCase(fetchOwnerAnalytics.fulfilled, (state, action) => {
+        state.analytics.loading = false;
+        state.analytics.bookingTrends = action.payload.data.bookingTrends || [];
+        state.analytics.facilityAnalytics = action.payload.data.facilityAnalytics || [];
+        state.analytics.sportAnalytics = action.payload.data.sportAnalytics || [];
+        state.analytics.statusDistribution = action.payload.data.statusDistribution || [];
+      })
+      .addCase(fetchOwnerAnalytics.rejected, (state, action) => {
+        state.analytics.loading = false;
+        state.analytics.error = action.payload as string;
       })
       // Create Booking
       .addCase(createBooking.pending, (state) => {
@@ -134,50 +206,38 @@ const bookingSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
-      // Update Booking Status
-      .addCase(updateBookingStatus.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(updateBookingStatus.fulfilled, (state, action) => {
-        state.loading = false;
-        if (action.payload.data) {
-          const index = state.bookings.findIndex(b => b._id === action.payload.data._id);
-          if (index !== -1) {
-            state.bookings[index] = action.payload.data;
-          }
-          if (state.currentBooking?._id === action.payload.data._id) {
-            state.currentBooking = action.payload.data;
-          }
-        }
-      })
-      .addCase(updateBookingStatus.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
       // Cancel Booking
-      .addCase(cancelBooking.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
       .addCase(cancelBooking.fulfilled, (state, action) => {
-        state.loading = false;
         if (action.payload.data) {
           const index = state.bookings.findIndex(b => b._id === action.payload.data._id);
           if (index !== -1) {
             state.bookings[index] = action.payload.data;
           }
-          if (state.currentBooking?._id === action.payload.data._id) {
-            state.currentBooking = action.payload.data;
-          }
         }
       })
-      .addCase(cancelBooking.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
+      // Update Booking Status by Owner
+      .addCase(updateBookingStatusByOwner.fulfilled, (state, action) => {
+        if (action.payload.data) {
+          // Update in owner bookings
+          const ownerIndex = state.ownerBookings.bookings.findIndex(b => b._id === action.payload.data._id);
+          if (ownerIndex !== -1) {
+            state.ownerBookings.bookings[ownerIndex] = action.payload.data;
+          }
+          // Update in regular bookings
+          const regularIndex = state.bookings.findIndex(b => b._id === action.payload.data._id);
+          if (regularIndex !== -1) {
+            state.bookings[regularIndex] = action.payload.data;
+          }
+        }
       });
   },
 });
 
-export const { clearError, clearCurrentBooking, clearBookings } = bookingSlice.actions;
+export const { 
+  clearError, 
+  clearCurrentBooking, 
+  clearOwnerBookingsError, 
+  clearAnalyticsError 
+} = bookingSlice.actions;
+
 export default bookingSlice.reducer;

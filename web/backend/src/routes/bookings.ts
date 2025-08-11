@@ -3,15 +3,19 @@ import {
   getBookings,
   getBooking,
   createBooking,
+  cancelBooking,
   updateBookingStatus,
-  cancelBooking
+  getOwnerBookings,
+  getOwnerBookingAnalytics
 } from '../controllers/bookings';
 import { protect, authorize } from '../middleware/auth';
 
 const router = express.Router();
 
-router.use(protect); // All booking routes require authentication
+// All routes require authentication
+router.use(protect);
 
+// Public booking routes (for users)
 router.route('/')
   .get(getBookings)
   .post(authorize('User'), createBooking);
@@ -19,10 +23,15 @@ router.route('/')
 router.route('/:id')
   .get(getBooking);
 
-router.route('/:id/status')
-  .put(authorize('Owner'), updateBookingStatus);
-
 router.route('/:id/cancel')
-  .put(cancelBooking);
+  .patch(authorize('User'), cancelBooking);
+
+// Owner-specific routes
+router.get('/owner', authorize('Owner'), getOwnerBookings);
+router.get('/owner/analytics', authorize('Owner'), getOwnerBookingAnalytics);
+router.put('/:id/status', authorize('Owner'), updateBookingStatus);
+
+// Facility-specific bookings
+router.get('/facility/:facilityId', getBookings);
 
 export default router;

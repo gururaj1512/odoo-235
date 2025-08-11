@@ -6,6 +6,10 @@ import {
   updateFacility,
   deleteFacility
 } from '../controllers/facilities';
+import {
+  getCourts,
+  createCourt
+} from '../controllers/courts';
 import { protect, authorize } from '../middleware/auth';
 import { uploadMultiple } from '../middleware/upload';
 
@@ -19,5 +23,10 @@ router.route('/:id')
   .get(getFacility)
   .put(protect, authorize('Owner'), uploadMultiple, updateFacility)
   .delete(protect, authorize('Owner'), deleteFacility);
+
+// Court routes under facilities
+router.route('/:facilityId/courts')
+  .get(getCourts)
+  .post(protect, authorize('Owner'), uploadMultiple, createCourt);
 
 export default router;

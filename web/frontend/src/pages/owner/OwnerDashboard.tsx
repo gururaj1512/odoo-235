@@ -79,10 +79,10 @@ const OwnerDashboard: React.FC = () => {
         window.location.href = '/facilities/create';
         break;
       case 'viewBookings':
-        window.location.href = '/bookings';
+        window.location.href = '/owner-bookings';
         break;
       case 'manageCourts':
-        // Navigate to court management
+        window.location.href = '/courts';
         break;
       default:
         break;

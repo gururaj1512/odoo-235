@@ -2,11 +2,32 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { Facility, CreateFacilityData, ApiResponse } from '@/types';
 import { facilityApi } from '@/services/api';
 
+interface PaginationInfo {
+  currentPage: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+  limit: number;
+  totalCount: number;
+}
+
 interface FacilityState {
   facilities: Facility[];
   currentFacility: Facility | null;
   loading: boolean;
   error: string | null;
+  pagination: PaginationInfo | null;
+  filters: {
+    sport?: string;
+    category?: string;
+    search?: string;
+    sort?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    amenities?: string[];
+    radius?: number;
+    timeSlot?: string;
+  };
 }
 
 const initialState: FacilityState = {
@@ -14,14 +35,28 @@ const initialState: FacilityState = {
   currentFacility: null,
   loading: false,
   error: null,
+  pagination: null,
+  filters: {}
 };
 
 // Async thunks
 export const fetchFacilities = createAsyncThunk(
   'facilities/fetchFacilities',
-  async (_, { rejectWithValue }) => {
+  async (params?: {
+    sport?: string;
+    category?: string;
+    search?: string;
+    sort?: string;
+    page?: number;
+    limit?: number;
+    minPrice?: number;
+    maxPrice?: number;
+    amenities?: string[];
+    radius?: number;
+    timeSlot?: string;
+  }, { rejectWithValue }) => {
     try {
-      const response = await facilityApi.getFacilities();
+      const response = await facilityApi.getFacilities(params);
       return response;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.error || 'Failed to fetch facilities');
@@ -87,6 +122,12 @@ const facilitySlice = createSlice({
     clearCurrentFacility: (state) => {
       state.currentFacility = null;
     },
+    updateFilters: (state, action) => {
+      state.filters = { ...state.filters, ...action.payload };
+    },
+    clearFilters: (state) => {
+      state.filters = {};
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -98,6 +139,7 @@ const facilitySlice = createSlice({
       .addCase(fetchFacilities.fulfilled, (state, action) => {
         state.loading = false;
         state.facilities = action.payload.data || [];
+        state.pagination = action.payload.pagination || null;
       })
       .addCase(fetchFacilities.rejected, (state, action) => {
         state.loading = false;
@@ -110,7 +152,7 @@ const facilitySlice = createSlice({
       })
       .addCase(fetchFacility.fulfilled, (state, action) => {
         state.loading = false;
-        state.currentFacility = action.payload.data;
+        state.currentFacility = action.payload.data || null;
       })
       .addCase(fetchFacility.rejected, (state, action) => {
         state.loading = false;
@@ -123,7 +165,9 @@ const facilitySlice = createSlice({
       })
       .addCase(createFacility.fulfilled, (state, action) => {
         state.loading = false;
-        state.facilities.push(action.payload.data);
+        if (action.payload.data) {
+          state.facilities.push(action.payload.data);
+        }
       })
       .addCase(createFacility.rejected, (state, action) => {
         state.loading = false;
@@ -136,12 +180,14 @@ const facilitySlice = createSlice({
       })
       .addCase(updateFacility.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.facilities.findIndex(f => f._id === action.payload.data._id);
-        if (index !== -1) {
-          state.facilities[index] = action.payload.data;
-        }
-        if (state.currentFacility?._id === action.payload.data._id) {
-          state.currentFacility = action.payload.data;
+        if (action.payload.data) {
+          const index = state.facilities.findIndex(f => f._id === action.payload.data._id);
+          if (index !== -1) {
+            state.facilities[index] = action.payload.data;
+          }
+          if (state.currentFacility?._id === action.payload.data._id) {
+            state.currentFacility = action.payload.data;
+          }
         }
       })
       .addCase(updateFacility.rejected, (state, action) => {
@@ -167,5 +213,5 @@ const facilitySlice = createSlice({
   },
 });
 
-export const { clearError, clearCurrentFacility } = facilitySlice.actions;
+export const { clearError, clearCurrentFacility, updateFilters, clearFilters } = facilitySlice.actions;
 export default facilitySlice.reducer;

@@ -42,13 +42,29 @@ const facilitySchema = new Schema<IFacilityDocument>({
     required: [true, 'Please add at least one image']
   }],
   owner: {
-    type: Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId as any,
     ref: 'User',
     required: true
   },
   isActive: {
     type: Boolean,
     default: true
+  },
+  approvalStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
+  approvalDate: {
+    type: Date
+  },
+  approvedBy: {
+    type: Schema.Types.ObjectId as any,
+    ref: 'User'
+  },
+  rejectionReason: {
+    type: String,
+    maxlength: [500, 'Rejection reason cannot be more than 500 characters']
   },
   pricing: {
     basePrice: {

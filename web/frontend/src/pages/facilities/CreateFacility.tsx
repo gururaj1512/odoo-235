@@ -11,11 +11,19 @@ import {
   Save,
   Plus,
   Trash2,
-  DollarSign
+  DollarSign,
+  Settings
 } from 'lucide-react';
 import { AppDispatch } from '@/redux/store';
 import { createFacility } from '@/redux/slices/facilitySlice';
 import { toast } from 'react-hot-toast';
+
+interface CourtData {
+  name: string;
+  sportType: string;
+  surfaceType: string;
+  pricePerHour: number;
+}
 
 interface FormData {
   name: string;
@@ -34,6 +42,7 @@ interface FormData {
     weekendPrice: number;
     currency: string;
   };
+  courts: CourtData[];
 }
 
 const CreateFacility: React.FC = () => {
@@ -56,9 +65,34 @@ const CreateFacility: React.FC = () => {
       peakHourPrice: 0,
       weekendPrice: 0,
       currency: 'INR'
-    }
+    },
+    courts: []
   });
   const [newAmenity, setNewAmenity] = useState('');
+  const [newCourt, setNewCourt] = useState<CourtData>({
+    name: '',
+    sportType: 'Badminton',
+    surfaceType: 'Synthetic',
+    pricePerHour: 0
+  });
+
+  const sportTypes = [
+    'Badminton',
+    'Tennis', 
+    'Basketball',
+    'Squash',
+    'Volleyball',
+    'Other'
+  ];
+
+  const surfaceTypes = [
+    'Hard Court',
+    'Clay',
+    'Grass', 
+    'Synthetic',
+    'Wood',
+    'Other'
+  ];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -89,6 +123,14 @@ const CreateFacility: React.FC = () => {
         [name]: value
       }));
     }
+  };
+
+  const handleCourtInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setNewCourt(prev => ({
+      ...prev,
+      [name]: name === 'pricePerHour' ? Number(value) : value
+    }));
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,6 +165,35 @@ const CreateFacility: React.FC = () => {
     }));
   };
 
+  const addCourt = () => {
+    if (!newCourt.name || !newCourt.sportType || !newCourt.surfaceType || newCourt.pricePerHour <= 0) {
+      toast.error('Please fill in all court details including name, sport type, surface type, and price');
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      courts: [...prev.courts, { ...newCourt }]
+    }));
+
+    // Reset new court form
+    setNewCourt({
+      name: '',
+      sportType: 'Badminton',
+      surfaceType: 'Synthetic',
+      pricePerHour: 0
+    });
+
+    toast.success('Court added successfully!');
+  };
+
+  const removeCourt = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      courts: prev.courts.filter((_, i) => i !== index)
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -133,6 +204,11 @@ const CreateFacility: React.FC = () => {
 
     if (formData.images.length === 0) {
       toast.error('Please upload at least one image');
+      return;
+    }
+
+    if (formData.courts.length === 0) {
+      toast.error('Please add at least one court to your facility');
       return;
     }
 
@@ -448,6 +524,89 @@ const CreateFacility: React.FC = () => {
                         className="text-red-500 hover:text-red-700"
                       >
                         <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Courts */}
+          <div className="bg-white rounded-2xl shadow-sm border p-6">
+            <h2 className="text-xl font-bold text-qc-text mb-6 flex items-center gap-2">
+              <Settings className="w-5 h-5" />
+              Courts
+            </h2>
+            
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  name="name"
+                  value={newCourt.name}
+                  onChange={handleCourtInputChange}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-qc-primary/20 focus:border-qc-primary transition-colors"
+                  placeholder="Court Name"
+                  required
+                />
+                <select
+                  name="sportType"
+                  value={newCourt.sportType}
+                  onChange={handleCourtInputChange}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-qc-primary/20 focus:border-qc-primary transition-colors"
+                  required
+                >
+                  {sportTypes.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+                <select
+                  name="surfaceType"
+                  value={newCourt.surfaceType}
+                  onChange={handleCourtInputChange}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-qc-primary/20 focus:border-qc-primary transition-colors"
+                  required
+                >
+                  {surfaceTypes.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  name="pricePerHour"
+                  value={newCourt.pricePerHour}
+                  onChange={handleCourtInputChange}
+                  min="0"
+                  step="0.01"
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-qc-primary/20 focus:border-qc-primary transition-colors"
+                  placeholder="Price per Hour"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={addCourt}
+                  className="px-4 py-2 bg-qc-primary text-white rounded-lg hover:bg-qc-primary/90 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+
+              {formData.courts.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {formData.courts.map((court, index) => (
+                    <div key={index} className="bg-gray-50 p-4 rounded-lg flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{court.name}</p>
+                        <p className="text-xs text-gray-600">{court.sportType} - {court.surfaceType}</p>
+                        <p className="text-sm font-semibold text-qc-primary">${court.pricePerHour}/hour</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeCourt(index)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   ))}

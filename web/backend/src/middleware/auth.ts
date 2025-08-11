@@ -3,27 +3,22 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User';
 import { AuthRequest, JwtPayload } from '../types';
 
-// Protect routes
 export const protect = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   let token: string | undefined;
 
-  // Check for token in Authorization header
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     token = req.headers.authorization.split(' ')[1];
   }
-  // Check for token in cookies
   else if (req.cookies && req.cookies.token) {
     token = req.cookies.token;
   }
 
-  // Make sure token exists
   if (!token) {
     res.status(401).json({ success: false, message: 'Not authorized to access this route' });
     return;
   }
 
   try {
-    // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
 
     const user = await User.findById(decoded.userId);
@@ -38,7 +33,6 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
   }
 };
 
-// Grant access to specific roles
 export const authorize = (...roles: string[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {

@@ -34,7 +34,7 @@ const userSchema = new Schema<IUserDocument>({
   },
   role: {
     type: String,
-    enum: ['User', 'Owner'],
+    enum: ['User', 'Owner', 'Admin'],
     default: 'User'
   },
   isEmailVerified: {
@@ -57,7 +57,6 @@ userSchema.pre('save', async function(next) {
   this.password = await bcrypt.hash(this.password, salt);
 });
 
-// Sign JWT and return
 userSchema.methods.getSignedJwtToken = function(): string {
   return jwt.sign(
     { userId: this._id, email: this.email, role: this.role },
@@ -66,24 +65,19 @@ userSchema.methods.getSignedJwtToken = function(): string {
   );
 };
 
-// Match user entered password to hashed password in database
 userSchema.methods.matchPassword = async function(enteredPassword: string): Promise<boolean> {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-// Generate and hash password token
 userSchema.methods.getResetPasswordToken = function(): string {
-  // Generate token
   const resetToken = crypto.randomBytes(20).toString('hex');
 
-  // Hash token and set to resetPasswordToken field
   this.resetPasswordToken = crypto
     .createHash('sha256')
     .update(resetToken)
     .digest('hex');
 
-  // Set expire
-  this.resetPasswordExpire = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+  this.resetPasswordExpire = new Date(Date.now() + 10 * 60 * 1000);
 
   return resetToken;
 };

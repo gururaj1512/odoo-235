@@ -1,16 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Clock, DollarSign, MapPin } from 'lucide-react';
 
 interface FilterPanelProps {
   onClose: () => void;
+  filters: {
+    sport?: string;
+    category?: string;
+    search?: string;
+    sort?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    amenities?: string[];
+    radius?: number;
+    timeSlot?: string;
+  };
+  onFiltersChange: (filters: any) => void;
 }
 
-const FilterPanel: React.FC<FilterPanelProps> = ({ onClose }) => {
-  const [selectedSports, setSelectedSports] = useState<string[]>(['Badminton']);
-  const [priceRange, setPriceRange] = useState([500, 1500]);
-  const [radius, setRadius] = useState(5);
-  const [timeSlot, setTimeSlot] = useState('any');
-  const [amenities, setAmenities] = useState<string[]>([]);
+const FilterPanel: React.FC<FilterPanelProps> = ({ onClose, filters, onFiltersChange }) => {
+  const [selectedSports, setSelectedSports] = useState<string[]>(filters.sport ? [filters.sport] : []);
+  const [priceRange, setPriceRange] = useState([filters.minPrice || 500, filters.maxPrice || 1500]);
+  const [radius, setRadius] = useState(filters.radius || 5);
+  const [timeSlot, setTimeSlot] = useState(filters.timeSlot || 'any');
+  const [amenities, setAmenities] = useState<string[]>(filters.amenities || []);
 
   const sports = ['Badminton', 'Tennis', 'Cricket', 'Football', 'Basketball'];
   const availableAmenities = ['AC', 'Parking', 'Shower', 'Cafe', 'Equipment Rental'];
@@ -22,19 +34,39 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onClose }) => {
   ];
 
   const toggleSport = (sport: string) => {
-    setSelectedSports(prev => 
-      prev.includes(sport) 
-        ? prev.filter(s => s !== sport)
-        : [...prev, sport]
-    );
+    const newSports = selectedSports.includes(sport) 
+      ? selectedSports.filter(s => s !== sport)
+      : [...selectedSports, sport];
+    setSelectedSports(newSports);
   };
 
   const toggleAmenity = (amenity: string) => {
-    setAmenities(prev => 
-      prev.includes(amenity) 
-        ? prev.filter(a => a !== amenity)
-        : [...prev, amenity]
-    );
+    const newAmenities = amenities.includes(amenity) 
+      ? amenities.filter(a => a !== amenity)
+      : [...amenities, amenity];
+    setAmenities(newAmenities);
+  };
+
+  const applyFilters = () => {
+    const newFilters = {
+      sport: selectedSports.length > 0 ? selectedSports[0] : undefined,
+      minPrice: priceRange[0],
+      maxPrice: priceRange[1],
+      radius,
+      timeSlot,
+      amenities: amenities.length > 0 ? amenities : undefined,
+    };
+    onFiltersChange(newFilters);
+    onClose();
+  };
+
+  const clearFilters = () => {
+    setSelectedSports([]);
+    setPriceRange([500, 1500]);
+    setRadius(5);
+    setTimeSlot('any');
+    setAmenities([]);
+    onFiltersChange({});
   };
 
   return (
@@ -102,12 +134,14 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onClose }) => {
               type="range"
               min="1"
               max="20"
+              step="1"
               value={radius}
               onChange={(e) => setRadius(parseInt(e.target.value))}
               className="w-full accent-qc-primary"
             />
-            <div className="text-sm text-gray-600 text-center">
-              Within {radius} km
+            <div className="flex justify-between text-sm text-gray-600">
+              <span>1 km</span>
+              <span>{radius} km</span>
             </div>
           </div>
         </div>
@@ -116,7 +150,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onClose }) => {
         <div>
           <h4 className="font-semibold text-qc-text mb-3 flex items-center">
             <Clock className="w-4 h-4 mr-1" />
-            Time
+            Time Slot
           </h4>
           <div className="space-y-2">
             {timeSlots.map(slot => (
@@ -137,36 +171,34 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onClose }) => {
       </div>
 
       {/* Amenities */}
-      <div className="mt-6 pt-6 border-t border-gray-200">
+      <div className="mt-6">
         <h4 className="font-semibold text-qc-text mb-3">Amenities</h4>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {availableAmenities.map(amenity => (
-            <button
-              key={amenity}
-              onClick={() => toggleAmenity(amenity)}
-              className={`px-3 py-2 rounded-full text-sm font-medium transition-colors ${
-                amenities.includes(amenity)
-                  ? 'bg-qc-primary text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              {amenity}
-            </button>
+            <label key={amenity} className="flex items-center">
+              <input
+                type="checkbox"
+                checked={amenities.includes(amenity)}
+                onChange={() => toggleAmenity(amenity)}
+                className="rounded border-gray-300 text-qc-primary focus:ring-qc-primary/20"
+              />
+              <span className="ml-2 text-sm text-gray-700">{amenity}</span>
+            </label>
           ))}
         </div>
       </div>
 
       {/* Action Buttons */}
       <div className="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200">
-        <button 
-          onClick={onClose}
-          className="px-6 py-2 text-qc-text border border-gray-300 rounded-qc-radius hover:bg-gray-50 transition-colors"
+        <button
+          onClick={clearFilters}
+          className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
         >
-          Reset
+          Clear All
         </button>
-        <button 
-          onClick={onClose}
-          className="px-6 py-2 bg-qc-primary text-white rounded-qc-radius hover:bg-qc-primary/90 transition-colors"
+        <button
+          onClick={applyFilters}
+          className="px-4 py-2 bg-qc-primary text-white rounded-lg hover:bg-qc-primary/90 transition-colors"
         >
           Apply Filters
         </button>

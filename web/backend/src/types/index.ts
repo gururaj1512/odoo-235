@@ -2,7 +2,7 @@ export interface IUser {
   name: string;
   email: string;
   password: string;
-  role: 'User' | 'Owner';
+  role: 'User' | 'Owner' | 'Admin';
   isEmailVerified: boolean;
   resetPasswordToken?: string;
   resetPasswordExpire?: Date;
@@ -24,8 +24,12 @@ export interface IFacility {
     };
   };
   images: string[];
-  owner: string | IUser;
+  owner: string;
   isActive: boolean;
+  approvalStatus: 'pending' | 'approved' | 'rejected';
+  approvalDate?: Date;
+  approvedBy?: string;
+  rejectionReason?: string;
   pricing: {
     basePrice: number;
     peakHourPrice?: number;
@@ -33,14 +37,11 @@ export interface IFacility {
     currency?: string;
   };
   amenities?: string[];
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface ICourt {
   name: string;
   sportType: string;
-  sport: string | ISport;
   surfaceType: string;
   pricePerHour: number;
   images: string[];
@@ -60,7 +61,8 @@ export interface IBooking {
   totalHours: number;
   totalAmount: number;
   status: 'Pending' | 'Confirmed' | 'Cancelled' | 'Completed';
-  paymentStatus: 'Pending' | 'Paid' | 'Refunded';
+  paymentStatus: 'Pending' | 'Paid' | 'Failed' | 'Refunded';
+  cancellationReason?: string;
   createdAt: Date;
   updatedAt: Date;
 }

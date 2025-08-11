@@ -32,6 +32,10 @@ export interface Facility {
   images: string[];
   owner: User;
   isActive: boolean;
+  approvalStatus: 'pending' | 'approved' | 'rejected';
+  approvalDate?: string;
+  approvedBy?: User;
+  rejectionReason?: string;
   pricing: {
     basePrice: number;
     peakHourPrice?: number;
@@ -68,7 +72,8 @@ export interface Booking {
   totalHours: number;
   totalAmount: number;
   status: 'Pending' | 'Confirmed' | 'Cancelled' | 'Completed';
-  paymentStatus: 'Pending' | 'Paid' | 'Refunded';
+  paymentStatus: 'Pending' | 'Paid' | 'Failed' | 'Refunded';
+  cancellationReason?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -83,7 +88,7 @@ export interface AuthState {
 
 export interface ApiResponse<T> {
   success: boolean;
-  data?: T;
+  data: T;
   count?: number;
   error?: string;
   message?: string;
@@ -120,6 +125,12 @@ export interface CreateFacilityData {
     weekendPrice?: number;
     currency?: string;
   };
+  courts?: {
+    name: string;
+    sportType: string;
+    surfaceType: string;
+    pricePerHour: number;
+  }[];
 }
 
 export interface CreateCourtData {
@@ -135,6 +146,22 @@ export interface CreateBookingData {
   date: string;
   startTime: string;
   endTime: string;
+  totalAmount: number;
+}
+
+export interface BookingDetails {
+  courtId: string;
+  courtName: string;
+  courtImage: string;
+  sportType: string;
+  surfaceType: string;
+  pricePerHour: number;
+  facilityName: string;
+  facilityLocation: string;
+  date: string;
+  startTime: string;
+  endTime?: string;
+  duration: number;
   totalAmount: number;
 }
 

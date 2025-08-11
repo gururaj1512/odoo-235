@@ -2,175 +2,136 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import Sport from '../models/Sport';
 
-// Load environment variables
 dotenv.config();
 
 const sportsData = [
   {
-    name: 'Football',
-    description: 'The world\'s most popular sport, played with 11 players per team on a large field.',
-    category: 'Outdoor',
-    playersPerTeam: 11,
-    maxPlayers: 22,
-    equipment: ['Football', 'Goal posts', 'Shin guards', 'Cleats'],
-    rules: ['No hands (except goalkeeper)', 'Offside rule', '90 minutes duration'],
-    icon: '⚽',
-    isActive: true,
-    popularity: 100
-  },
-  {
-    name: 'Basketball',
-    description: 'Fast-paced indoor/outdoor sport with 5 players per team.',
-    category: 'Both',
-    playersPerTeam: 5,
-    maxPlayers: 10,
-    equipment: ['Basketball', 'Hoop', 'Backboard', 'Court'],
-    rules: ['Dribble to move', 'No traveling', '3-point line'],
-    icon: '🏀',
+    name: 'Badminton',
+    description: 'A racquet sport played using racquets to hit a shuttlecock across a net.',
+    category: 'Indoor',
+    playersPerTeam: 1,
+    maxPlayers: 4,
+    equipment: ['Badminton Racket', 'Shuttlecock', 'Net'],
+    rules: [
+      'Serve diagonally across the court',
+      'Shuttlecock must pass over the net',
+      'Points scored when opponent fails to return'
+    ],
+    icon: '🏸',
     isActive: true,
     popularity: 85
   },
   {
     name: 'Tennis',
-    description: 'Racket sport played individually or in doubles on a court.',
-    category: 'Both',
+    description: 'A racket sport that can be played individually or between two teams of two players.',
+    category: 'Outdoor',
     playersPerTeam: 1,
     maxPlayers: 4,
-    equipment: ['Tennis racket', 'Tennis balls', 'Net', 'Court'],
-    rules: ['Serve diagonally', 'Best of 3 sets', 'Deuce scoring'],
+    equipment: ['Tennis Racket', 'Tennis Ball', 'Net'],
+    rules: [
+      'Serve from behind the baseline',
+      'Ball must bounce once before return',
+      'Points scored when opponent fails to return'
+    ],
     icon: '🎾',
     isActive: true,
-    popularity: 75
+    popularity: 90
   },
   {
-    name: 'Badminton',
-    description: 'Racket sport played with a shuttlecock, popular in Asia.',
+    name: 'Basketball',
+    description: 'A team sport in which two teams score points by throwing a ball through a hoop.',
     category: 'Indoor',
-    playersPerTeam: 1,
-    maxPlayers: 4,
-    equipment: ['Badminton racket', 'Shuttlecock', 'Net', 'Court'],
-    rules: ['Serve underhand', 'Best of 3 games', '21 points to win'],
-    icon: '🏸',
+    playersPerTeam: 5,
+    maxPlayers: 10,
+    equipment: ['Basketball', 'Hoop', 'Backboard'],
+    rules: [
+      'Dribble the ball while moving',
+      'Score by shooting through the hoop',
+      'Fouls result in free throws'
+    ],
+    icon: '🏀',
     isActive: true,
-    popularity: 70
+    popularity: 95
   },
   {
     name: 'Cricket',
-    description: 'Bat and ball game with 11 players per team.',
+    description: 'A bat-and-ball game played between two teams of eleven players.',
     category: 'Outdoor',
     playersPerTeam: 11,
     maxPlayers: 22,
-    equipment: ['Cricket bat', 'Cricket ball', 'Wickets', 'Pitch'],
-    rules: ['Overs system', 'LBW rule', 'Test/ODI/T20 formats'],
+    equipment: ['Cricket Bat', 'Cricket Ball', 'Wickets'],
+    rules: [
+      'Batsmen score runs by hitting the ball',
+      'Bowlers try to dismiss batsmen',
+      'Team with most runs wins'
+    ],
     icon: '🏏',
     isActive: true,
     popularity: 80
   },
   {
+    name: 'Football',
+    description: 'A team sport played with a spherical ball between two teams of 11 players.',
+    category: 'Outdoor',
+    playersPerTeam: 11,
+    maxPlayers: 22,
+    equipment: ['Football', 'Goal Posts', 'Field Markings'],
+    rules: [
+      'Score by kicking ball into opponent\'s goal',
+      'No hands allowed except for goalkeeper',
+      'Offside rule applies'
+    ],
+    icon: '⚽',
+    isActive: true,
+    popularity: 100
+  },
+  {
+    name: 'Squash',
+    description: 'A racket sport played by two or four players in a four-walled court.',
+    category: 'Indoor',
+    playersPerTeam: 1,
+    maxPlayers: 4,
+    equipment: ['Squash Racket', 'Squash Ball', 'Court'],
+    rules: [
+      'Hit ball against front wall',
+      'Ball can bounce once before return',
+      'Points scored on opponent errors'
+    ],
+    icon: '🎾',
+    isActive: true,
+    popularity: 70
+  },
+  {
     name: 'Volleyball',
-    description: 'Team sport played with 6 players per team.',
+    description: 'A team sport in which two teams hit a ball over a net.',
     category: 'Both',
     playersPerTeam: 6,
     maxPlayers: 12,
     equipment: ['Volleyball', 'Net', 'Court'],
-    rules: ['3 touches maximum', 'No catching', 'Best of 5 sets'],
+    rules: [
+      'Three hits per side maximum',
+      'Ball must pass over the net',
+      'Score by grounding ball on opponent\'s court'
+    ],
     icon: '🏐',
     isActive: true,
-    popularity: 65
-  },
-  {
-    name: 'Squash',
-    description: 'Racket sport played in an enclosed court.',
-    category: 'Indoor',
-    playersPerTeam: 1,
-    maxPlayers: 2,
-    equipment: ['Squash racket', 'Squash ball', 'Court'],
-    rules: ['Serve to opposite box', 'Best of 5 games', '11 points to win'],
-    icon: '🏓',
-    isActive: true,
-    popularity: 45
-  },
-  {
-    name: 'Table Tennis',
-    description: 'Fast-paced indoor sport with small rackets and table.',
-    category: 'Indoor',
-    playersPerTeam: 1,
-    maxPlayers: 4,
-    equipment: ['Table tennis racket', 'Table tennis ball', 'Table', 'Net'],
-    rules: ['Serve diagonally', 'Best of 7 games', '11 points to win'],
-    icon: '🏓',
-    isActive: true,
-    popularity: 60
-  },
-  {
-    name: 'Hockey',
-    description: 'Team sport played with sticks and a ball.',
-    category: 'Outdoor',
-    playersPerTeam: 11,
-    maxPlayers: 22,
-    equipment: ['Hockey stick', 'Hockey ball', 'Goal posts', 'Field'],
-    rules: ['No lifting stick above shoulder', 'Penalty corners', '70 minutes duration'],
-    icon: '🏑',
-    isActive: true,
-    popularity: 55
-  },
-  {
-    name: 'Rugby',
-    description: 'Physical team sport with oval ball.',
-    category: 'Outdoor',
-    playersPerTeam: 15,
-    maxPlayers: 30,
-    equipment: ['Rugby ball', 'Goal posts', 'Field'],
-    rules: ['Forward pass not allowed', 'Tackling rules', '80 minutes duration'],
-    icon: '🏉',
-    isActive: true,
-    popularity: 50
-  },
-  {
-    name: 'Baseball',
-    description: 'Bat and ball game with 9 players per team.',
-    category: 'Outdoor',
-    playersPerTeam: 9,
-    maxPlayers: 18,
-    equipment: ['Baseball bat', 'Baseball', 'Gloves', 'Diamond'],
-    rules: ['9 innings', '3 strikes out', 'Home run'],
-    icon: '⚾',
-    isActive: true,
-    popularity: 40
-  },
-  {
-    name: 'Golf',
-    description: 'Individual sport played on a course with clubs.',
-    category: 'Outdoor',
-    playersPerTeam: 1,
-    maxPlayers: 4,
-    equipment: ['Golf clubs', 'Golf balls', 'Course'],
-    rules: ['Lowest score wins', '18 holes', 'Par system'],
-    icon: '⛳',
-    isActive: true,
-    popularity: 35
+    popularity: 75
   }
 ];
 
 const seedSports = async () => {
   try {
-    // Connect to MongoDB
     await mongoose.connect(process.env.MONGODB_URI!);
     console.log('Connected to MongoDB');
-
+    
     // Clear existing sports
     await Sport.deleteMany({});
     console.log('Cleared existing sports');
-
+    
     // Insert new sports
     const sports = await Sport.insertMany(sportsData);
     console.log(`Seeded ${sports.length} sports successfully`);
-
-    // Display seeded sports
-    sports.forEach(sport => {
-      console.log(`- ${sport.name} (${sport.category})`);
-    });
-
+    
     process.exit(0);
   } catch (error) {
     console.error('Error seeding sports:', error);

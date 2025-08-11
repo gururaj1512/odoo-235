@@ -31,7 +31,7 @@ const Bookings: React.FC = () => {
   const [dateFilter, setDateFilter] = useState('all');
 
   useEffect(() => {
-    dispatch(fetchBookings());
+    dispatch(fetchBookings(undefined));
   }, [dispatch]);
 
   const handleCancelBooking = async (bookingId: string) => {

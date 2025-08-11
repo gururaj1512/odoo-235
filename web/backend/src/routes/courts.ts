@@ -11,11 +11,6 @@ import { uploadMultiple } from '../middleware/upload';
 
 const router = express.Router();
 
-// Routes for courts under a facility
-router.route('/facilities/:facilityId/courts')
-  .get(getCourts)
-  .post(protect, authorize('Owner'), uploadMultiple, createCourt);
-
 // Routes for individual courts
 router.route('/:id')
   .get(getCourt)

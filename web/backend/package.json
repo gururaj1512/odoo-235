@@ -8,7 +8,8 @@
     "dev": "nodemon src/server.ts",
     "build": "tsc",
     "test": "jest",
-    "seed:sports": "ts-node src/utils/seedSports.ts"
+    "seed:sports": "ts-node src/utils/seedSports.ts",
+    "seed:facilities": "ts-node src/utils/seedFacilities.ts"
   },
   "keywords": [
     "court",

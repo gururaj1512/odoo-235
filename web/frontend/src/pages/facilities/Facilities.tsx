@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, 
@@ -16,27 +17,54 @@ import {
   Plus
 } from 'lucide-react';
 import { AppDispatch, RootState } from '@/redux/store';
-import { fetchFacilities } from '@/redux/slices/facilitySlice';
+import { fetchFacilities, updateFilters, clearFilters } from '@/redux/slices/facilitySlice';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import VenueCard from '@/components/VenueCard';
 import FilterPanel from '@/components/FilterPanel';
-import OccupancyMeter from '@/components/OccupancyMeter';
+import Pagination from '@/components/common/Pagination';
 import SportFilter from '@/components/SportFilter';
 
 const Facilities: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { facilities, loading } = useSelector((state: RootState) => state.facilities);
+  const navigate = useNavigate();
+  const { facilities, loading, pagination, filters } = useSelector((state: RootState) => state.facilities);
   const { user } = useSelector((state: RootState) => state.auth);
   
+  // Debug logging
+  console.log('Facilities state:', { facilities, loading, pagination, filters });
+  
   const [showFilters, setShowFilters] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSport, setSelectedSport] = useState<string | null>(null);
-  const [priceRange, setPriceRange] = useState([0, 2000]);
-  const [sortBy, setSortBy] = useState('rating');
+  const [searchQuery, setSearchQuery] = useState(filters.search || '');
+  const [selectedSport, setSelectedSport] = useState<string | null>(filters.sport || null);
+  const [sortBy, setSortBy] = useState(filters.sort || 'rating');
+  const [currentPage, setCurrentPage] = useState(1);
 
+  // Initial fetch on component mount
   useEffect(() => {
-    dispatch(fetchFacilities());
+    dispatch(fetchFacilities({ page: 1, limit: 12 }));
   }, [dispatch]);
+
+  // Debounced search effect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery !== filters.search) {
+        dispatch(updateFilters({ search: searchQuery, page: 1 }));
+        setCurrentPage(1);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, dispatch, filters.search]);
+
+  // Fetch facilities when filters or page changes
+  useEffect(() => {
+    const params = {
+      ...filters,
+      page: currentPage,
+      limit: 12
+    };
+    dispatch(fetchFacilities(params));
+  }, [dispatch, filters, currentPage]);
 
   const sports = [
     { name: 'All Sports', value: 'all', icon: '🏟️' },
@@ -48,46 +76,61 @@ const Facilities: React.FC = () => {
   ];
 
   // Transform facilities data for display
-  const venues = facilities.map((facility) => ({
-    id: facility._id,
-    name: facility.name,
-    location: `${facility.location.city}, ${facility.location.state}`,
-    distance: `${Math.floor(Math.random() * 10) + 1} km`,
-    rating: 4.5 + Math.random() * 0.5,
-    reviews: Math.floor(Math.random() * 500) + 50,
-    pricePerHour: facility.pricing?.basePrice || Math.floor(Math.random() * 800) + 400,
-    sport: facility.courts?.[0]?.sportType || 'Badminton',
-    image: facility.images?.[0] || 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=400&h=300&fit=crop',
-    occupancy: Math.floor(Math.random() * 100),
-    amenities: facility.amenities || ['AC', 'Parking', 'Shower', 'Cafe'].slice(0, Math.floor(Math.random() * 4) + 1),
-    availableSlots: Math.floor(Math.random() * 20) + 5,
-  }));
-
-  const filteredVenues = venues.filter(venue => {
-    const matchesSearch = venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         venue.location.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesSport = !selectedSport || venue.sport === selectedSport;
-    const matchesPrice = venue.pricePerHour >= priceRange[0] && venue.pricePerHour <= priceRange[1];
-    
-    return matchesSearch && matchesSport && matchesPrice;
+  const venues = facilities.map((facility) => {
+    console.log('Processing facility:', facility);
+    return {
+      id: facility._id,
+      name: facility.name,
+      location: `${facility.location.city}, ${facility.location.state}`,
+      distance: `${Math.floor(Math.random() * 10) + 1} km`,
+      rating: 4.5 + Math.random() * 0.5,
+      reviews: Math.floor(Math.random() * 500) + 50,
+      pricePerHour: facility.pricing?.basePrice || Math.floor(Math.random() * 800) + 400,
+      sport: facility.courts?.[0]?.sportType || 'Badminton',
+      image: facility.images?.[0] || 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=400&h=300&fit=crop',
+      occupancy: Math.floor(Math.random() * 100),
+      amenities: facility.amenities || ['AC', 'Parking', 'Shower', 'Cafe'].slice(0, Math.floor(Math.random() * 4) + 1),
+      availableSlots: Math.floor(Math.random() * 20) + 5,
+    };
   });
+  
+  console.log('Transformed venues:', venues);
 
-  const sortedVenues = [...filteredVenues].sort((a, b) => {
-    switch (sortBy) {
-      case 'rating':
-        return b.rating - a.rating;
-      case 'price':
-        return a.pricePerHour - b.pricePerHour;
-      case 'distance':
-        return parseFloat(a.distance) - parseFloat(b.distance);
-      default:
-        return 0;
-    }
-  });
+  const handleSportChange = (sport: string | null) => {
+    setSelectedSport(sport);
+    dispatch(updateFilters({ 
+      sport: sport === 'all' ? undefined : sport, 
+      page: 1 
+    }));
+    setCurrentPage(1);
+  };
+
+  const handleSortChange = (sort: string) => {
+    setSortBy(sort);
+    dispatch(updateFilters({ sort, page: 1 }));
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    dispatch(updateFilters({ page }));
+  };
+
+  const handleFiltersChange = (newFilters: any) => {
+    dispatch(updateFilters({ ...newFilters, page: 1 }));
+    setCurrentPage(1);
+  };
+
+  const handleClearFilters = () => {
+    dispatch(clearFilters());
+    setSearchQuery('');
+    setSelectedSport(null);
+    setSortBy('rating');
+    setCurrentPage(1);
+  };
 
   const handleVenueSelect = (venue: any) => {
-    // Navigate to venue detail page
-    console.log('Selected venue:', venue);
+    navigate(`/facilities/${venue.id}`);
   };
 
   return (
@@ -103,6 +146,7 @@ const Facilities: React.FC = () => {
             
             {user?.role === 'Owner' && (
               <motion.button
+                onClick={() => navigate('/facilities/create')}
                 className="inline-flex items-center px-4 py-2 bg-qc-primary text-white rounded-qc-radius hover:bg-qc-primary/90 transition-colors"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -134,7 +178,7 @@ const Facilities: React.FC = () => {
             {/* Sport Filter */}
             <SportFilter
               selectedSport={selectedSport}
-              onSportChange={setSelectedSport}
+              onSportChange={handleSportChange}
               className="lg:w-auto"
             />
 
@@ -161,28 +205,43 @@ const Facilities: React.FC = () => {
                 exit={{ opacity: 0, height: 0 }}
                 className="mt-6 pt-6 border-t border-gray-200"
               >
-                <FilterPanel onClose={() => setShowFilters(false)} />
+                <FilterPanel 
+                  onClose={() => setShowFilters(false)}
+                  filters={filters}
+                  onFiltersChange={handleFiltersChange}
+                />
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Sort Options */}
+        {/* Sort Options and Results Count */}
         <div className="flex items-center justify-between mb-6">
-          <p className="text-gray-600">
-            {sortedVenues.length} facility{sortedVenues.length !== 1 ? 'ies' : 'y'} found
-          </p>
+          <div className="flex items-center gap-4">
+            <p className="text-gray-600">
+              {pagination?.totalCount || 0} facility{(pagination?.totalCount || 0) !== 1 ? 'ies' : 'y'} found
+            </p>
+            {(filters.sport || filters.minPrice || filters.maxPrice || filters.amenities?.length) && (
+              <button
+                onClick={handleClearFilters}
+                className="text-sm text-qc-primary hover:text-qc-primary/80 underline"
+              >
+                Clear all filters
+              </button>
+            )}
+          </div>
           
           <div className="flex items-center space-x-2">
             <span className="text-sm text-gray-600">Sort by:</span>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
+              onChange={(e) => handleSortChange(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-qc-radius focus:ring-2 focus:ring-qc-primary/20 focus:border-qc-primary"
             >
               <option value="rating">Rating</option>
               <option value="price">Price</option>
               <option value="distance">Distance</option>
+              <option value="name">Name</option>
             </select>
           </div>
         </div>
@@ -192,22 +251,36 @@ const Facilities: React.FC = () => {
           <div className="flex justify-center py-12">
             <LoadingSpinner />
           </div>
-        ) : sortedVenues.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sortedVenues.map((venue, index) => (
-              <motion.div
-                key={venue.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <VenueCard
-                  venue={venue}
-                  onSelect={() => handleVenueSelect(venue)}
-                />
-              </motion.div>
-            ))}
-          </div>
+        ) : venues.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {venues.map((venue, index) => (
+                <motion.div
+                  key={venue.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <VenueCard
+                    venue={venue}
+                    onSelect={() => handleVenueSelect(venue)}
+                  />
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {pagination && (
+              <Pagination
+                currentPage={pagination.currentPage}
+                totalPages={pagination.totalPages}
+                hasNextPage={pagination.hasNextPage}
+                hasPrevPage={pagination.hasPrevPage}
+                onPageChange={handlePageChange}
+                className="mt-8"
+              />
+            )}
+          </>
         ) : (
           <div className="text-center py-12">
             <Building2 className="mx-auto h-12 w-12 text-gray-400" />
@@ -215,6 +288,12 @@ const Facilities: React.FC = () => {
             <p className="mt-1 text-sm text-gray-500">
               Try adjusting your search criteria or filters.
             </p>
+            <button
+              onClick={handleClearFilters}
+              className="mt-4 px-4 py-2 text-sm text-qc-primary hover:text-qc-primary/80 underline"
+            >
+              Clear all filters
+            </button>
           </div>
         )}
       </div>

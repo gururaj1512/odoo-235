@@ -85,8 +85,35 @@ export const authApi = {
 
 // Facility API
 export const facilityApi = {
-  getFacilities: async (): Promise<ApiResponse<Facility[]>> => {
-    const response = await api.get('/facilities');
+  getFacilities: async (params?: {
+    sport?: string;
+    category?: string;
+    search?: string;
+    sort?: string;
+    page?: number;
+    limit?: number;
+    minPrice?: number;
+    maxPrice?: number;
+    amenities?: string[];
+    radius?: number;
+    timeSlot?: string;
+  }): Promise<ApiResponse<Facility[]>> => {
+    const queryParams = new URLSearchParams();
+    
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          if (Array.isArray(value)) {
+            value.forEach(item => queryParams.append(key, item));
+          } else {
+            queryParams.append(key, value.toString());
+          }
+        }
+      });
+    }
+
+    const url = `/facilities${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await api.get(url);
     return response.data;
   },
 
@@ -132,6 +159,16 @@ export const facilityApi = {
       if (data.pricing.currency) {
         formData.append('pricing[currency]', data.pricing.currency);
       }
+    }
+
+    // Add courts data
+    if (data.courts && Array.isArray(data.courts)) {
+      data.courts.forEach((court, courtIndex) => {
+        formData.append(`courts[${courtIndex}][name]`, court.name);
+        formData.append(`courts[${courtIndex}][sportType]`, court.sportType);
+        formData.append(`courts[${courtIndex}][surfaceType]`, court.surfaceType);
+        formData.append(`courts[${courtIndex}][pricePerHour]`, court.pricePerHour.toString());
+      });
     }
 
     const response = await api.post('/facilities', formData, {
@@ -310,6 +347,99 @@ export const bookingApi = {
 
   updateBookingStatus: async (id: string, status: string): Promise<ApiResponse<Booking>> => {
     const response = await api.put(`/bookings/${id}/status`, { status });
+    return response.data;
+  },
+
+  // Owner-specific booking methods
+  getOwnerBookings: async (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    facilityId?: string;
+    date?: string;
+  }): Promise<ApiResponse<Booking[]>> => {
+    const queryParams = new URLSearchParams();
+    
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, value.toString());
+        }
+      });
+    }
+
+    const url = `/bookings/owner${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await api.get(url);
+    return response.data;
+  },
+
+  getOwnerBookingAnalytics: async (params?: {
+    period?: 'week' | 'month' | 'year';
+    facilityId?: string;
+  }): Promise<ApiResponse<any>> => {
+    const queryParams = new URLSearchParams();
+    
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, value.toString());
+        }
+      });
+    }
+
+    const url = `/bookings/owner/analytics${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await api.get(url);
+    return response.data;
+  },
+
+  updateBookingStatusByOwner: async (bookingId: string, data: { status: string; reason?: string }): Promise<ApiResponse<Booking>> => {
+    const response = await api.put(`/bookings/${bookingId}/status`, data);
+    return response.data;
+  },
+};
+
+// Admin API
+export const adminApi = {
+  getGlobalStats: async (): Promise<ApiResponse<any>> => {
+    const response = await api.get('/admin/stats');
+    return response.data;
+  },
+
+  getPendingFacilities: async (params?: { page?: number; limit?: number }): Promise<ApiResponse<Facility[]>> => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    
+    const url = `/admin/facilities/pending${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await api.get(url);
+    return response.data;
+  },
+
+  updateFacilityApproval: async (facilityId: string, data: { status: 'approved' | 'rejected'; rejectionReason?: string }): Promise<ApiResponse<Facility>> => {
+    const response = await api.put(`/admin/facilities/${facilityId}/approval`, data);
+    return response.data;
+  },
+
+  getAllUsers: async (params?: { page?: number; limit?: number; role?: string; search?: string }): Promise<ApiResponse<User[]>> => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.role) queryParams.append('role', params.role);
+    if (params?.search) queryParams.append('search', params.search);
+    
+    const url = `/admin/users${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await api.get(url);
+    return response.data;
+  },
+
+  updateUserStatus: async (userId: string, status: 'active' | 'banned'): Promise<ApiResponse<User>> => {
+    const response = await api.put(`/admin/users/${userId}/status`, { status });
+    return response.data;
+  },
+
+  getBookingAnalytics: async (period?: 'week' | 'month' | 'year'): Promise<ApiResponse<any>> => {
+    const url = `/admin/analytics/bookings${period ? `?period=${period}` : ''}`;
+    const response = await api.get(url);
     return response.data;
   },
 };

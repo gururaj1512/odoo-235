@@ -3,14 +3,10 @@ import crypto from 'crypto';
 import User from '../models/User';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../config/email';
 
-// @desc    Register user
-// @route   POST /api/auth/register
-// @access  Public
+
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, email, password, role } = req.body;
-
-    // Create user
     const user = await User.create({
       name,
       email,
@@ -18,7 +14,6 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       role: role || 'User'
     });
 
-    // Generate verification token
     const verificationToken = crypto.randomBytes(32).toString('hex');
     user.resetPasswordToken = crypto
       .createHash('sha256')
@@ -27,9 +22,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     user.resetPasswordExpire = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
     await user.save();
 
-    // Send verification email
     await sendVerificationEmail(email, verificationToken);
-
     sendTokenResponse(user, 201, res);
   } catch (error: any) {
     res.status(400).json({
@@ -39,14 +32,9 @@ export const register = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// @desc    Login user
-// @route   POST /api/auth/login
-// @access  Public
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body;
-
-    // Validate email & password
     if (!email || !password) {
       res.status(400).json({
         success: false,
@@ -55,10 +43,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Check for user
-    console.log(User.find());
     const user = await User.findOne({ email }).select('+password');
-
     if (!user) {
       res.status(401).json({
         success: false,
@@ -67,9 +52,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Check if password matches
     const isMatch = await user.matchPassword(password);
-
     if (!isMatch) {
       res.status(401).json({
         success: false,
@@ -87,9 +70,6 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// @desc    Get current logged in user
-// @route   GET /api/auth/me
-// @access  Private
 export const getMe = async (req: any, res: Response): Promise<void> => {
   try {
     const user = await User.findById(req.user.id);
@@ -106,9 +86,6 @@ export const getMe = async (req: any, res: Response): Promise<void> => {
   }
 };
 
-// @desc    Forgot password
-// @route   POST /api/auth/forgot-password
-// @access  Public
 export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = await User.findOne({ email: req.body.email });
@@ -121,14 +98,10 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    // Get reset token
     const resetToken = user.getResetPasswordToken();
-
     await user.save({ validateBeforeSave: false });
 
-    // Send email
     await sendPasswordResetEmail(user.email, resetToken);
-
     res.status(200).json({
       success: true,
       message: 'Email sent'
@@ -142,12 +115,8 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
   }
 };
 
-// @desc    Reset password
-// @route   PUT /api/auth/reset-password/:resettoken
-// @access  Public
 export const resetPassword = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Get hashed token
     const resetPasswordToken = crypto
       .createHash('sha256')
       .update(req.params.resettoken)
@@ -166,7 +135,6 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    // Set new password
     user.password = req.body.password;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
@@ -181,9 +149,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
   }
 };
 
-// Get token from model, create cookie and send response
 const sendTokenResponse = (user: any, statusCode: number, res: Response): void => {
-  // Create token
   const token = user.getSignedJwtToken();
 
   const options = {
@@ -193,9 +159,7 @@ const sendTokenResponse = (user: any, statusCode: number, res: Response): void =
     sameSite: 'strict' as const
   };
 
-  // Set cookie
   res.cookie('token', token, options);
-
   res.status(statusCode).json({
     success: true,
     token,
@@ -209,9 +173,6 @@ const sendTokenResponse = (user: any, statusCode: number, res: Response): void =
   });
 };
 
-// @desc    Logout user / clear cookie
-// @route   POST /api/auth/logout
-// @access  Private
 export const logout = async (req: Request, res: Response): Promise<void> => {
   res.cookie('token', 'none', {
     expires: new Date(Date.now() + 10 * 1000),

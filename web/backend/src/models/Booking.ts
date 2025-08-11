@@ -5,17 +5,17 @@ export interface IBookingDocument extends IBooking, Document {}
 
 const bookingSchema = new Schema<IBookingDocument>({
   user: {
-    type: Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId as any,
     ref: 'User',
     required: true
   },
   court: {
-    type: Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId as any,
     ref: 'Court',
     required: true
   },
   facility: {
-    type: Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId as any,
     ref: 'Facility',
     required: true
   },
@@ -25,21 +25,19 @@ const bookingSchema = new Schema<IBookingDocument>({
   },
   startTime: {
     type: String,
-    required: [true, 'Please add a start time'],
-    match: [/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Please add a valid time format (HH:MM)']
+    required: [true, 'Please add a start time']
   },
   endTime: {
     type: String,
-    required: [true, 'Please add an end time'],
-    match: [/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Please add a valid time format (HH:MM)']
+    required: [true, 'Please add an end time']
   },
   totalHours: {
     type: Number,
-    required: true
+    required: [true, 'Please add total hours']
   },
   totalAmount: {
     type: Number,
-    required: true
+    required: [true, 'Please add total amount']
   },
   status: {
     type: String,
@@ -48,20 +46,24 @@ const bookingSchema = new Schema<IBookingDocument>({
   },
   paymentStatus: {
     type: String,
-    enum: ['Pending', 'Paid', 'Refunded'],
+    enum: ['Pending', 'Paid', 'Failed', 'Refunded'],
     default: 'Pending'
+  },
+  cancellationReason: {
+    type: String,
+    maxlength: [500, 'Cancellation reason cannot be more than 500 characters']
   }
 }, {
   timestamps: true
 });
 
-// Calculate total hours and amount before saving
+// Pre-save hook to calculate total hours
 bookingSchema.pre('save', function(next) {
-  if (this.isModified('startTime') || this.isModified('endTime')) {
-    const start = new Date(`2000-01-01T${this.startTime}:00`);
-    const end = new Date(`2000-01-01T${this.endTime}:00`);
-    const diffMs = end.getTime() - start.getTime();
-    this.totalHours = diffMs / (1000 * 60 * 60);
+  if (this.startTime && this.endTime) {
+    const start = new Date(`2000-01-01T${this.startTime}`);
+    const end = new Date(`2000-01-01T${this.endTime}`);
+    const diffInHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+    this.totalHours = Math.abs(diffInHours);
   }
   next();
 });

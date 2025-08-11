@@ -6,11 +6,12 @@ import facilityReducer from './slices/facilitySlice';
 import courtReducer from './slices/courtSlice';
 import bookingReducer from './slices/bookingSlice';
 import sportReducer from './slices/sportSlice';
+import adminReducer from './slices/adminSlice';
 
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['auth'], // Only persist auth state
+  whitelist: ['auth'] // Only persist auth state
 };
 
 const persistedAuthReducer = persistReducer(persistConfig, authReducer);
@@ -22,6 +23,7 @@ export const store = configureStore({
     courts: courtReducer,
     bookings: bookingReducer,
     sports: sportReducer,
+    admin: adminReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

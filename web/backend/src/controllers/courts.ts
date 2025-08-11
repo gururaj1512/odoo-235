@@ -4,9 +4,6 @@ import Facility from '../models/Facility';
 import cloudinary from '../config/cloudinary';
 import { AuthRequest } from '../types';
 
-// @desc    Get all courts for a facility
-// @route   GET /api/facilities/:facilityId/courts
-// @access  Public
 export const getCourts = async (req: Request, res: Response): Promise<void> => {
   try {
     const courts = await Court.find({ 
@@ -14,6 +11,7 @@ export const getCourts = async (req: Request, res: Response): Promise<void> => {
       isAvailable: true 
     }).populate('facility', 'name');
 
+    console.log(courts);
     res.status(200).json({
       success: true,
       count: courts.length,
@@ -27,14 +25,12 @@ export const getCourts = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// @desc    Get single court
-// @route   GET /api/courts/:id
-// @access  Public
 export const getCourt = async (req: Request, res: Response): Promise<void> => {
   try {
     const court = await Court.findById(req.params.id)
       .populate('facility', 'name location');
 
+    console.log(court);
     if (!court) {
       res.status(404).json({
         success: false,

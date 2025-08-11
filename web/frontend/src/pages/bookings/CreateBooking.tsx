@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { 
@@ -11,11 +11,14 @@ import {
   User,
   Building2,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { AppDispatch, RootState } from '@/redux/store';
 import { createBooking } from '@/redux/slices/bookingSlice';
+import { fetchFacility } from '@/redux/slices/facilitySlice';
 import { toast } from 'react-hot-toast';
+import { BookingDetails } from '@/types';
 
 interface BookingFormData {
   courtId: string;
@@ -29,9 +32,11 @@ interface BookingFormData {
 const CreateBooking: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
   const { loading } = useSelector((state: RootState) => state.bookings);
+  const { currentFacility, loading: facilityLoading } = useSelector((state: RootState) => state.facilities);
   
   const [formData, setFormData] = useState<BookingFormData>({
     courtId: '',
@@ -43,7 +48,17 @@ const CreateBooking: React.FC = () => {
   });
 
   // Get booking data from location state (if coming from facility detail)
-  const bookingData = location.state?.bookingData;
+  const bookingData = location.state?.bookingData as BookingDetails | undefined;
+  
+  // Get facility ID from URL parameters
+  const facilityId = searchParams.get('facility');
+
+  // Fetch facility data if facilityId is provided in URL
+  useEffect(() => {
+    if (facilityId && !bookingData) {
+      dispatch(fetchFacility(facilityId));
+    }
+  }, [facilityId, bookingData, dispatch]);
 
   useEffect(() => {
     if (bookingData) {
@@ -96,10 +111,31 @@ const CreateBooking: React.FC = () => {
         endTime: endTimeString
       }));
     }
+
+    // Update total amount when court is selected
+    if (name === 'courtId' && value) {
+      const selectedCourt = currentFacility?.courts?.find((court: any) => court._id === value);
+      if (selectedCourt) {
+        const newTotalAmount = selectedCourt.pricePerHour * formData.duration;
+        setFormData(prev => ({
+          ...prev,
+          totalAmount: newTotalAmount
+        }));
+      }
+    }
   };
 
   const handleDurationChange = (duration: number) => {
-    const basePrice = bookingData?.pricePerHour || 0;
+    // Use selected court price if available, otherwise use facility base price
+    let basePrice = 0;
+    if (formData.courtId && currentFacility?.courts) {
+      const selectedCourt = currentFacility.courts.find((court: any) => court._id === formData.courtId);
+      basePrice = selectedCourt?.pricePerHour || 0;
+    } else {
+      // For facility-level booking, use the facility's base price
+      basePrice = currentFacility?.pricing?.basePrice || bookingData?.pricePerHour || 0;
+    }
+    
     const newTotalAmount = basePrice * duration;
     
     // Calculate new endTime based on duration
@@ -120,36 +156,72 @@ const CreateBooking: React.FC = () => {
 
   // Recalculate total amount when duration changes
   useEffect(() => {
-    if (bookingData?.pricePerHour) {
-      const basePrice = bookingData.pricePerHour;
+    let basePrice = 0;
+    if (formData.courtId && currentFacility?.courts) {
+      const selectedCourt = currentFacility.courts.find((court: any) => court._id === formData.courtId);
+      basePrice = selectedCourt?.pricePerHour || 0;
+    } else {
+      basePrice = currentFacility?.pricing?.basePrice || bookingData?.pricePerHour || 0;
+    }
+    
+    if (basePrice > 0) {
       const newTotalAmount = basePrice * formData.duration;
       setFormData(prev => ({
         ...prev,
         totalAmount: newTotalAmount
       }));
     }
-  }, [formData.duration, bookingData?.pricePerHour]);
+  }, [formData.duration, formData.courtId, bookingData?.pricePerHour, currentFacility?.pricing?.basePrice, currentFacility?.courts]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.courtId || !formData.date || !formData.startTime) {
+    if (!formData.date || !formData.startTime || !formData.endTime) {
       toast.error('Please fill in all required fields');
       return;
     }
 
+    // Check if we have either a court selected or a facility ID
+    if (!formData.courtId && !facilityId) {
+      toast.error('Please select a court or facility');
+      return;
+    }
+
+    // Validate that start time is before end time
+    if (formData.startTime >= formData.endTime) {
+      toast.error('Start time must be before end time');
+      return;
+    }
+
+    // Validate that date is not in the past
+    const selectedDate = new Date(formData.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (selectedDate < today) {
+      toast.error('Cannot book for past dates');
+      return;
+    }
+
     try {
-      await dispatch(createBooking({
-        courtId: formData.courtId,
+      const bookingData = {
+        ...(formData.courtId && { courtId: formData.courtId }),
+        ...(facilityId && !formData.courtId && { facilityId: facilityId }),
         date: formData.date,
         startTime: formData.startTime,
         endTime: formData.endTime,
         totalAmount: formData.totalAmount
-      })).unwrap();
+      };
+      
+      console.log('Submitting booking data:', bookingData);
+      console.log('Form data state:', formData);
+      console.log('Facility ID from URL:', facilityId);
+      
+      await dispatch(createBooking(bookingData)).unwrap();
       
       toast.success('Booking created successfully!');
       navigate('/bookings');
     } catch (error: any) {
+      console.error('Booking creation error:', error);
       toast.error(error.message || 'Failed to create booking');
     }
   };
@@ -221,6 +293,63 @@ const CreateBooking: React.FC = () => {
                   </div>
                 )}
 
+                {/* Facility Information (when loaded from URL) */}
+                {currentFacility && !bookingData && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="font-semibold text-qc-text mb-3">Selected Facility</h3>
+                    <div className="flex items-center gap-4">
+                      <img
+                        src={currentFacility.images?.[0] || 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=100&h=100&fit=crop'}
+                        alt="Facility"
+                        className="w-16 h-16 rounded-lg object-cover"
+                      />
+                      <div>
+                        <h4 className="font-medium text-qc-text">{currentFacility.name}</h4>
+                        <p className="text-sm text-gray-600">{currentFacility.location.city}, {currentFacility.location.state}</p>
+                        <p className="text-lg font-bold text-qc-text">₹{currentFacility.pricing?.basePrice || 0}/hour</p>
+                      </div>
+                    </div>
+                    
+                    {/* Court Selection for Facility */}
+                    {currentFacility.courts && currentFacility.courts.length > 0 && (
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Select Court (Optional)
+                        </label>
+                        <select
+                          name="courtId"
+                          value={formData.courtId}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-qc-primary/20 focus:border-qc-primary transition-colors"
+                        >
+                          <option value="">Any available court (recommended)</option>
+                          {currentFacility.courts.map((court: any) => (
+                            <option key={court._id} value={court._id}>
+                              {court.name} - {court.sportType} (₹{court.pricePerHour}/hour)
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Leave as "Any available court" to let us assign the best available court for you
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Loading State */}
+                {facilityLoading && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center gap-4">
+                      <Loader2 className="w-8 h-8 animate-spin text-qc-primary" />
+                      <div>
+                        <h3 className="font-semibold text-qc-text">Loading facility details...</h3>
+                        <p className="text-sm text-gray-600">Please wait while we fetch the facility information</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Date Selection */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -285,9 +414,32 @@ const CreateBooking: React.FC = () => {
                     </span>
                   </div>
                   <div className="mt-2 text-sm text-gray-600">
-                    <p>Base Price: ₹{bookingData?.pricePerHour || 0}/hour</p>
-                    <p>Duration: {formData.duration} hour{formData.duration > 1 ? 's' : ''}</p>
-                    <p>Calculation: ₹{bookingData?.pricePerHour || 0} × {formData.duration} = ₹{formData.totalAmount}</p>
+                    {(() => {
+                      let basePrice = 0;
+                      let priceSource = '';
+                      
+                      if (formData.courtId && currentFacility?.courts) {
+                        const selectedCourt = currentFacility.courts.find((court: any) => court._id === formData.courtId);
+                        basePrice = selectedCourt?.pricePerHour || 0;
+                        priceSource = selectedCourt?.name || 'Selected Court';
+                      } else {
+                        basePrice = currentFacility?.pricing?.basePrice || bookingData?.pricePerHour || 0;
+                        priceSource = currentFacility?.name || 'Facility Base Price';
+                      }
+                      
+                      return (
+                        <>
+                          <p>Base Price: ₹{basePrice}/hour ({priceSource})</p>
+                          <p>Duration: {formData.duration} hour{formData.duration > 1 ? 's' : ''}</p>
+                          <p>Calculation: ₹{basePrice} × {formData.duration} = ₹{formData.totalAmount}</p>
+                          {!formData.courtId && (
+                            <p className="text-blue-600 font-medium">
+                              💡 We'll assign the best available court for you
+                            </p>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -324,13 +476,17 @@ const CreateBooking: React.FC = () => {
                   </div>
                 </div>
 
-                {bookingData && (
+                {(bookingData || currentFacility) && (
                   <>
                     <div className="flex items-center gap-3">
                       <Building2 className="w-5 h-5 text-gray-500" />
                       <div>
-                        <p className="text-sm font-medium text-qc-text">{bookingData.facilityName}</p>
-                        <p className="text-xs text-gray-600">{bookingData.facilityLocation}</p>
+                        <p className="text-sm font-medium text-qc-text">
+                          {bookingData?.facilityName || currentFacility?.name}
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          {bookingData?.facilityLocation || `${currentFacility?.location.city}, ${currentFacility?.location.state}`}
+                        </p>
                       </div>
                     </div>
 

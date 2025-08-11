@@ -85,7 +85,7 @@ export const getBooking = async (req: AuthRequest, res: Response): Promise<void>
 // @access  Private (User only)
 export const createBooking = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { courtId, date, startTime, endTime } = req.body;
+    const { courtId, date, startTime, endTime, totalAmount } = req.body;
 
     // Check if court exists and is available
     const court = await Court.findById(courtId);
@@ -126,11 +126,13 @@ export const createBooking = async (req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
-    // Calculate total hours and amount
+    // Calculate total hours
     const start = new Date(`2000-01-01T${startTime}:00`);
     const end = new Date(`2000-01-01T${endTime}:00`);
     const totalHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-    const totalAmount = totalHours * court.pricePerHour;
+
+    // Use the totalAmount from frontend or calculate if not provided
+    const finalTotalAmount = totalAmount || (totalHours * court.pricePerHour);
 
     const booking = await Booking.create({
       user: req.user!._id,
@@ -140,7 +142,7 @@ export const createBooking = async (req: AuthRequest, res: Response): Promise<vo
       startTime,
       endTime,
       totalHours,
-      totalAmount
+      totalAmount: finalTotalAmount
     });
 
     // Populate the booking for email

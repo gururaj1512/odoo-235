@@ -32,6 +32,13 @@ export interface Facility {
   images: string[];
   owner: User;
   isActive: boolean;
+  pricing: {
+    basePrice: number;
+    peakHourPrice?: number;
+    weekendPrice?: number;
+    currency?: string;
+  };
+  amenities?: string[];
   courts?: Court[];
   createdAt: string;
   updatedAt: string;
@@ -107,6 +114,12 @@ export interface CreateFacilityData {
   };
   images: File[];
   amenities: string[];
+  pricing: {
+    basePrice: number;
+    peakHourPrice?: number;
+    weekendPrice?: number;
+    currency?: string;
+  };
 }
 
 export interface CreateCourtData {
@@ -122,6 +135,7 @@ export interface CreateBookingData {
   date: string;
   startTime: string;
   endTime: string;
+  totalAmount: number;
 }
 
 export interface Sport {

@@ -37,7 +37,9 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      window.location.href = '/login';
+      // Don't redirect automatically, let the component handle it
+      // This prevents infinite loops during authentication checks
+      console.log('Unauthorized request, authentication required');
     }
     return Promise.reject(error);
   }
@@ -102,7 +104,13 @@ export const facilityApi = {
     formData.append('location[state]', data.location.state);
     formData.append('location[zipCode]', data.location.zipCode);
     
-    data.images.forEach((image) => {
+    console.log('Images to upload:', data.images.length);
+    data.images.forEach((image, index) => {
+      console.log(`Image ${index}:`, {
+        name: image.name,
+        size: image.size,
+        type: image.type
+      });
       formData.append('images', image);
     });
     
@@ -110,6 +118,20 @@ export const facilityApi = {
       data.amenities.forEach((amenity) => {
         formData.append('amenities[]', amenity);
       });
+    }
+
+    // Add pricing data
+    if (data.pricing) {
+      formData.append('pricing[basePrice]', data.pricing.basePrice.toString());
+      if (data.pricing.peakHourPrice) {
+        formData.append('pricing[peakHourPrice]', data.pricing.peakHourPrice.toString());
+      }
+      if (data.pricing.weekendPrice) {
+        formData.append('pricing[weekendPrice]', data.pricing.weekendPrice.toString());
+      }
+      if (data.pricing.currency) {
+        formData.append('pricing[currency]', data.pricing.currency);
+      }
     }
 
     const response = await api.post('/facilities', formData, {
@@ -141,6 +163,20 @@ export const facilityApi = {
       data.amenities.forEach((amenity) => {
         formData.append('amenities[]', amenity);
       });
+    }
+
+    // Add pricing data
+    if (data.pricing) {
+      formData.append('pricing[basePrice]', data.pricing.basePrice.toString());
+      if (data.pricing.peakHourPrice) {
+        formData.append('pricing[peakHourPrice]', data.pricing.peakHourPrice.toString());
+      }
+      if (data.pricing.weekendPrice) {
+        formData.append('pricing[weekendPrice]', data.pricing.weekendPrice.toString());
+      }
+      if (data.pricing.currency) {
+        formData.append('pricing[currency]', data.pricing.currency);
+      }
     }
 
     const response = await api.put(`/facilities/${id}`, formData, {

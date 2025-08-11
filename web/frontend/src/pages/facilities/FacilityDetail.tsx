@@ -32,7 +32,7 @@ const FacilityDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
-  const { facilities, loading } = useSelector((state: RootState) => state.facilities);
+  const { facilities, currentFacility, loading } = useSelector((state: RootState) => state.facilities);
   const { user } = useSelector((state: RootState) => state.auth);
   
   const [activeTab, setActiveTab] = useState('overview');
@@ -133,9 +133,14 @@ const FacilityDetail: React.FC = () => {
     ]
   };
 
-  const facility = facilities.find(f => f._id === id) || mockFacility as any;
+  const facility = currentFacility || facilities.find(f => f._id === id) || mockFacility as any;
 
   const handleBookNow = (court: any) => {
+    if (!user) {
+      // Redirect to login if user is not authenticated
+      navigate('/login');
+      return;
+    }
     setSelectedCourt(court);
     setActiveTab('booking');
   };
@@ -317,7 +322,9 @@ const FacilityDetail: React.FC = () => {
                                   <span>{court.surfaceType}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                  <span className="text-lg font-bold text-qc-text">₹{court.pricePerHour}/hour</span>
+                                  <span className="text-lg font-bold text-qc-text">
+                                    ₹{facility.pricing?.basePrice || court.pricePerHour}/hour
+                                  </span>
                                   <button
                                     onClick={() => handleBookNow(court)}
                                     disabled={!court.isAvailable}
@@ -453,7 +460,26 @@ const FacilityDetail: React.FC = () => {
                                   <span className="text-xl font-bold text-qc-text">₹{selectedCourt.pricePerHour}</span>
                                 </div>
                                 
-                                <button className="w-full bg-qc-primary text-white py-3 rounded-lg font-medium hover:bg-qc-primary/90 transition-colors">
+                                <button 
+                                  onClick={() => {
+                                    const bookingData = {
+                                      courtId: selectedCourt._id,
+                                      courtName: selectedCourt.name,
+                                      courtImage: selectedCourt.images[0],
+                                      sportType: selectedCourt.sportType,
+                                      surfaceType: selectedCourt.surfaceType,
+                                      pricePerHour: facility.pricing?.basePrice || selectedCourt.pricePerHour,
+                                      facilityName: facility.name,
+                                      facilityLocation: `${facility.location.city}, ${facility.location.state}`,
+                                      date: (document.querySelector('input[name="date"]') as HTMLInputElement)?.value || '',
+                                      startTime: (document.querySelector('select[name="startTime"]') as HTMLSelectElement)?.value || '',
+                                      duration: Number((document.querySelector('select[name="duration"]') as HTMLSelectElement)?.value) || 1,
+                                      totalAmount: (facility.pricing?.basePrice || selectedCourt.pricePerHour) * (Number((document.querySelector('select[name="duration"]') as HTMLSelectElement)?.value) || 1)
+                                    };
+                                    navigate('/bookings/create', { state: { bookingData } });
+                                  }}
+                                  className="w-full bg-qc-primary text-white py-3 rounded-lg font-medium hover:bg-qc-primary/90 transition-colors"
+                                >
                                   Confirm Booking
                                 </button>
                               </div>
@@ -499,7 +525,16 @@ const FacilityDetail: React.FC = () => {
               <div className="bg-white rounded-2xl shadow-sm border p-6">
                 <h3 className="font-semibold text-qc-text mb-4">Quick Actions</h3>
                 <div className="space-y-3">
-                  <button className="w-full bg-qc-primary text-white py-3 rounded-lg font-medium hover:bg-qc-primary/90 transition-colors">
+                  <button 
+                    onClick={() => {
+                      if (!user) {
+                        navigate('/login');
+                        return;
+                      }
+                      setActiveTab('booking');
+                    }}
+                    className="w-full bg-qc-primary text-white py-3 rounded-lg font-medium hover:bg-qc-primary/90 transition-colors"
+                  >
                     <BookOpen className="w-4 h-4 inline mr-2" />
                     Book Now
                   </button>
@@ -513,6 +548,35 @@ const FacilityDetail: React.FC = () => {
                   </button>
                 </div>
               </div>
+
+              {/* Pricing Information */}
+              {facility.pricing && (
+                <div className="bg-white rounded-2xl shadow-sm border p-6">
+                  <h3 className="font-semibold text-qc-text mb-4">Pricing Information</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Base Price:</span>
+                      <span className="font-medium text-qc-text">₹{facility.pricing.basePrice}/hour</span>
+                    </div>
+                    {facility.pricing.peakHourPrice && facility.pricing.peakHourPrice > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Peak Hour Price:</span>
+                        <span className="font-medium text-qc-text">₹{facility.pricing.peakHourPrice}/hour</span>
+                      </div>
+                    )}
+                    {facility.pricing.weekendPrice && facility.pricing.weekendPrice > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Weekend Price:</span>
+                        <span className="font-medium text-qc-text">₹{facility.pricing.weekendPrice}/hour</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Currency:</span>
+                      <span className="font-medium text-qc-text">{facility.pricing.currency || 'INR'}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Facility Info */}
               <div className="bg-white rounded-2xl shadow-sm border p-6">

@@ -29,28 +29,40 @@ import LoadingSpinner from './components/common/LoadingSpinner';
 
 import Chatbot from './components/Chatbot';
 import ChatButton from './components/ChatButton';
-// import VoiceNavigation from './components/VoiceNavigation';
-// import VoiceNavigationButton from './components/VoiceNavigationButton';
+import VoiceNavigation from './components/VoiceNavigation';
+import VoiceNavigationButton from './components/VoiceNavigationButton';
+import NearbySportsPage from './pages/NearbySportsPage';
+import VoiceDemoPage from './pages/VoiceDemoPage';
 
-function App() {
+function AppContent() {
   const dispatch = useDispatch<AppDispatch>();
   const { isAuthenticated, loading, token } = useSelector((state: RootState) => state.auth);
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
   const [isVoiceNavigationOpen, setIsVoiceNavigationOpen] = useState(false);
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
 
+  // Initial authentication check - runs only once on app load
   useEffect(() => {
-    if (token && !isAuthenticated) {
-      dispatch(getMe());
-    }
-  }, [dispatch, token, isAuthenticated]);
+    dispatch(getMe());
+  }, [dispatch]);
+
+  // useEffect(() => {
+  //   const handleKeyDown = (event: KeyboardEvent) => {
+  //     if ((event.ctrlKey || event.metaKey) && event.key === 'v') {
+  //       event.preventDefault();
+  //       setIsVoiceNavigationOpen(true);
+  //     }
+  //   };
+
+  //   window.addEventListener('keydown', handleKeyDown);
+  //   return () => window.removeEventListener('keydown', handleKeyDown);
+  // }, []);
 
   if (loading) {
     return <LoadingSpinner />;
   }
 
   return (
-    <Router>
       <div className="min-h-screen bg-gray-50">
         <Routes>
           {/* Public Routes */}
@@ -59,6 +71,8 @@ function App() {
           <Route path="/register" element={!isAuthenticated ? <Register /> : <Navigate to="/dashboard" />} />
           <Route path="/forgot-password" element={!isAuthenticated ? <ForgotPassword /> : <Navigate to="/dashboard" />} />
           <Route path="/reset-password" element={!isAuthenticated ? <ResetPassword /> : <Navigate to="/dashboard" />} />
+          <Route path="/nearby-sports" element={<NearbySportsPage />} />
+          <Route path="/voice-demo" element={<VoiceDemoPage />} />
           
           {/* Protected Routes */}
           <Route path="/dashboard" element={
@@ -127,6 +141,20 @@ function App() {
 
         <ChatButton onClick={() => setIsChatbotOpen(true)} />
         <Chatbot isOpen={isChatbotOpen} onClose={() => setIsChatbotOpen(false)} />
+        <VoiceNavigationButton onClick={() => setIsVoiceNavigationOpen(true)} />
+        <VoiceNavigation 
+          isOpen={isVoiceNavigationOpen} 
+          onClose={() => setIsVoiceNavigationOpen(false)}
+          onNavigate={(path) => {
+            if (path === 'chatbot') {
+              setIsChatbotOpen(true);
+              setIsVoiceNavigationOpen(false);
+            } else {
+              navigate(path);
+              setIsVoiceNavigationOpen(false);
+            }
+          }}
+        />
         
         <Toaster
           position="top-right"
@@ -153,8 +181,14 @@ function App() {
           }}
         />
       </div>
-    </Router>
   );
 }
 
+function App() {
+  return (
+    <Router>
+      <AppContent/>
+    </Router>
+  )
+}
 export default App;

@@ -1,12 +1,172 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { motion } from 'framer-motion';
+import { 
+  ArrowLeft, 
+  Calendar, 
+  Clock, 
+  MapPin, 
+  DollarSign,
+  User,
+  Building2,
+  CheckCircle,
+  AlertCircle
+} from 'lucide-react';
+import { AppDispatch, RootState } from '@/redux/store';
+import { createBooking } from '@/redux/slices/bookingSlice';
+import { toast } from 'react-hot-toast';
+
+interface BookingFormData {
+  courtId: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  duration: number;
+  totalAmount: number;
+}
 
 const CreateBooking: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const dispatch = useDispatch<AppDispatch>();
+  const { user } = useSelector((state: RootState) => state.auth);
+  const { loading } = useSelector((state: RootState) => state.bookings);
+  
+  const [formData, setFormData] = useState<BookingFormData>({
+    courtId: '',
+    date: '',
+    startTime: '',
+    endTime: '',
+    duration: 1,
+    totalAmount: 0
+  });
+
+  // Get booking data from location state (if coming from facility detail)
+  const bookingData = location.state?.bookingData;
+
+  useEffect(() => {
+    if (bookingData) {
+      const duration = bookingData.duration || 1;
+      const basePrice = bookingData.pricePerHour || 0;
+      // Use the passed totalAmount if available, otherwise calculate it
+      const calculatedTotal = bookingData.totalAmount || (basePrice * duration);
+      
+      // Calculate endTime if startTime is provided
+      let calculatedEndTime = bookingData.endTime || '';
+      if (bookingData.startTime) {
+        const startTime = new Date(`2000-01-01T${bookingData.startTime}:00`);
+        const endTime = new Date(startTime.getTime() + (duration * 60 * 60 * 1000));
+        calculatedEndTime = endTime.toTimeString().slice(0, 5);
+      }
+      
+      console.log('Booking data received:', bookingData);
+      console.log('Duration:', duration);
+      console.log('Base price:', basePrice);
+      console.log('Passed totalAmount:', bookingData.totalAmount);
+      console.log('Calculated total:', calculatedTotal);
+      console.log('Calculated endTime:', calculatedEndTime);
+      
+      setFormData({
+        courtId: bookingData.courtId || '',
+        date: bookingData.date || '',
+        startTime: bookingData.startTime || '',
+        endTime: calculatedEndTime,
+        duration: duration,
+        totalAmount: calculatedTotal
+      });
+    }
+  }, [bookingData]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+
+    // Calculate endTime when startTime changes
+    if (name === 'startTime' && value) {
+      const startTime = new Date(`2000-01-01T${value}:00`);
+      const endTime = new Date(startTime.getTime() + (formData.duration * 60 * 60 * 1000));
+      const endTimeString = endTime.toTimeString().slice(0, 5);
+      
+      setFormData(prev => ({
+        ...prev,
+        endTime: endTimeString
+      }));
+    }
+  };
+
+  const handleDurationChange = (duration: number) => {
+    const basePrice = bookingData?.pricePerHour || 0;
+    const newTotalAmount = basePrice * duration;
+    
+    // Calculate new endTime based on duration
+    let newEndTime = '';
+    if (formData.startTime) {
+      const startTime = new Date(`2000-01-01T${formData.startTime}:00`);
+      const endTime = new Date(startTime.getTime() + (duration * 60 * 60 * 1000));
+      newEndTime = endTime.toTimeString().slice(0, 5);
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      duration,
+      totalAmount: newTotalAmount,
+      endTime: newEndTime
+    }));
+  };
+
+  // Recalculate total amount when duration changes
+  useEffect(() => {
+    if (bookingData?.pricePerHour) {
+      const basePrice = bookingData.pricePerHour;
+      const newTotalAmount = basePrice * formData.duration;
+      setFormData(prev => ({
+        ...prev,
+        totalAmount: newTotalAmount
+      }));
+    }
+  }, [formData.duration, bookingData?.pricePerHour]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.courtId || !formData.date || !formData.startTime) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      await dispatch(createBooking({
+        courtId: formData.courtId,
+        date: formData.date,
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        totalAmount: formData.totalAmount
+      })).unwrap();
+      
+      toast.success('Booking created successfully!');
+      navigate('/bookings');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to create booking');
+    }
+  };
 
   const handleBack = () => {
-    navigate('/facilities');
+    navigate(-1);
+  };
+
+  const availableTimes = [
+    '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
+    '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00',
+    '20:00', '21:00', '22:00'
+  ];
+
+  const getMinDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
   };
 
   return (
@@ -23,23 +183,198 @@ const CreateBooking: React.FC = () => {
             </button>
             <div>
               <h1 className="text-2xl font-bold text-qc-text">Create Booking</h1>
-              <p className="text-gray-600 mt-1">Book a court - Coming soon</p>
+              <p className="text-gray-600 mt-1">Book your preferred court and time slot</p>
             </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-2xl shadow-sm border p-6 text-center">
-          <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-qc-text mb-4">Create Booking</h2>
-          <p className="text-gray-600 mb-6">The booking creation functionality is coming soon. You can book courts directly from the facility detail pages.</p>
-          <button
-            onClick={handleBack}
-            className="px-6 py-3 bg-qc-primary text-white rounded-lg hover:bg-qc-primary/90 transition-colors"
-          >
-            Browse Facilities
-          </button>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Booking Form */}
+          <div className="lg:col-span-2">
+            <motion.form
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              onSubmit={handleSubmit}
+              className="bg-white rounded-2xl shadow-sm border p-6"
+            >
+              <h2 className="text-xl font-bold text-qc-text mb-6">Booking Details</h2>
+              
+              <div className="space-y-6">
+                {/* Court Selection */}
+                {bookingData && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="font-semibold text-qc-text mb-3">Selected Court</h3>
+                    <div className="flex items-center gap-4">
+                      <img
+                        src={bookingData.courtImage || 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=100&h=100&fit=crop'}
+                        alt="Court"
+                        className="w-16 h-16 rounded-lg object-cover"
+                      />
+                      <div>
+                        <h4 className="font-medium text-qc-text">{bookingData.courtName}</h4>
+                        <p className="text-sm text-gray-600">{bookingData.sportType} • {bookingData.surfaceType}</p>
+                        <p className="text-lg font-bold text-qc-text">₹{bookingData.pricePerHour}/hour</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Date Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Date *
+                  </label>
+                  <input
+                    type="date"
+                    name="date"
+                    value={formData.date}
+                    onChange={handleInputChange}
+                    min={getMinDate()}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-qc-primary/20 focus:border-qc-primary transition-colors"
+                    required
+                  />
+                </div>
+
+                {/* Time Selection */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Start Time *
+                    </label>
+                    <select
+                      name="startTime"
+                      value={formData.startTime}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-qc-primary/20 focus:border-qc-primary transition-colors"
+                      required
+                    >
+                      <option value="">Select start time</option>
+                      {availableTimes.map((time) => (
+                        <option key={time} value={time}>
+                          {time}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Duration
+                    </label>
+                    <select
+                      value={formData.duration}
+                      onChange={(e) => handleDurationChange(Number(e.target.value))}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-qc-primary/20 focus:border-qc-primary transition-colors"
+                    >
+                      <option value={1}>1 hour</option>
+                      <option value={2}>2 hours</option>
+                      <option value={3}>3 hours</option>
+                      <option value={4}>4 hours</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Total Amount */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-gray-700">Total Amount:</span>
+                    <span className="text-2xl font-bold text-qc-text">
+                      ₹{formData.totalAmount}
+                    </span>
+                  </div>
+                  <div className="mt-2 text-sm text-gray-600">
+                    <p>Base Price: ₹{bookingData?.pricePerHour || 0}/hour</p>
+                    <p>Duration: {formData.duration} hour{formData.duration > 1 ? 's' : ''}</p>
+                    <p>Calculation: ₹{bookingData?.pricePerHour || 0} × {formData.duration} = ₹{formData.totalAmount}</p>
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-qc-primary text-white py-3 rounded-lg font-medium hover:bg-qc-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline mr-2" />
+                      Creating Booking...
+                    </>
+                  ) : (
+                    'Confirm Booking'
+                  )}
+                </button>
+              </div>
+            </motion.form>
+          </div>
+
+          {/* Booking Summary */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-2xl shadow-sm border p-6">
+              <h3 className="font-semibold text-qc-text mb-4">Booking Summary</h3>
+              
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <User className="w-5 h-5 text-gray-500" />
+                  <div>
+                    <p className="text-sm font-medium text-qc-text">{user?.name}</p>
+                    <p className="text-xs text-gray-600">{user?.email}</p>
+                  </div>
+                </div>
+
+                {bookingData && (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <Building2 className="w-5 h-5 text-gray-500" />
+                      <div>
+                        <p className="text-sm font-medium text-qc-text">{bookingData.facilityName}</p>
+                        <p className="text-xs text-gray-600">{bookingData.facilityLocation}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <Calendar className="w-5 h-5 text-gray-500" />
+                      <div>
+                        <p className="text-sm font-medium text-qc-text">Date</p>
+                        <p className="text-xs text-gray-600">{formData.date || 'Not selected'}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <Clock className="w-5 h-5 text-gray-500" />
+                      <div>
+                        <p className="text-sm font-medium text-qc-text">Time</p>
+                        <p className="text-xs text-gray-600">
+                          {formData.startTime ? `${formData.startTime} (${formData.duration} hour${formData.duration > 1 ? 's' : ''})` : 'Not selected'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <DollarSign className="w-5 h-5 text-gray-500" />
+                      <div>
+                        <p className="text-sm font-medium text-qc-text">Total</p>
+                        <p className="text-xs text-gray-600">₹{formData.totalAmount}</p>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="border-t pt-4">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <CheckCircle className="w-4 h-4 text-green-500" />
+                    <span>Booking will be confirmed immediately</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600 mt-2">
+                    <AlertCircle className="w-4 h-4 text-yellow-500" />
+                    <span>Free cancellation up to 2 hours before</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

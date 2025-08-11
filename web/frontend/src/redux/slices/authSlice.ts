@@ -4,9 +4,9 @@ import { authApi } from '@/services/api';
 
 const initialState: AuthState = {
   user: null,
-  token: null,
+  token: null, // Don't store token in localStorage since we use HTTP-only cookies
   isAuthenticated: false,
-  loading: false,
+  loading: true, // Start with loading true to prevent premature auth checks
   error: null,
 };
 
@@ -125,6 +125,7 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.user = action.payload.user || null;
         state.token = action.payload.token || null;
+        // Token is stored in HTTP-only cookie, no need to store in localStorage
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
@@ -140,6 +141,7 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.user = action.payload.user || null;
         state.token = action.payload.token || null;
+        // Token is stored in HTTP-only cookie, no need to store in localStorage
       })
       .addCase(register.rejected, (state, action) => {
         state.loading = false;
@@ -154,6 +156,10 @@ const authSlice = createSlice({
         state.loading = false;
         state.isAuthenticated = true;
         state.user = action.payload.data || null;
+        // If we successfully get user data, we're authenticated
+        if (action.payload.data) {
+          state.token = 'authenticated'; // Use a placeholder since token is in cookie
+        }
       })
       .addCase(getMe.rejected, (state, action) => {
         state.loading = false;
@@ -161,7 +167,7 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.user = null;
         state.token = null;
-        localStorage.removeItem('token');
+        // Clear any persisted state on auth failure
       })
       // Forgot Password
       .addCase(forgotPassword.pending, (state) => {

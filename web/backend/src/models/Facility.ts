@@ -49,7 +49,33 @@ const facilitySchema = new Schema<IFacilityDocument>({
   isActive: {
     type: Boolean,
     default: true
-  }
+  },
+  pricing: {
+    basePrice: {
+      type: Number,
+      required: [true, 'Please add a base price per hour'],
+      min: [0, 'Price cannot be negative']
+    },
+    peakHourPrice: {
+      type: Number,
+      default: 0,
+      min: [0, 'Peak hour price cannot be negative']
+    },
+    weekendPrice: {
+      type: Number,
+      default: 0,
+      min: [0, 'Weekend price cannot be negative']
+    },
+    currency: {
+      type: String,
+      default: 'INR',
+      enum: ['INR', 'USD', 'EUR']
+    }
+  },
+  amenities: [{
+    type: String,
+    trim: true
+  }]
 }, {
   timestamps: true,
   toJSON: { virtuals: true },

@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import Facility from '../models/Facility';
 import cloudinary from '../config/cloudinary';
 import { AuthRequest } from '../types';
+import fs from 'fs';
+import path from 'path';
 
 // @desc    Get all facilities
 // @route   GET /api/facilities
@@ -97,27 +99,81 @@ export const getFacility = async (req: Request, res: Response): Promise<void> =>
 // @access  Private (Owner only)
 export const createFacility = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { name, description, location } = req.body;
+    const { name, description, location, pricing, amenities } = req.body;
     const files = req.files as Express.Multer.File[];
+    
+    console.log('Files received:', files?.length || 0);
+    if (files && files.length > 0) {
+      files.forEach((file, index) => {
+        console.log(`File ${index}:`, {
+          originalname: file.originalname,
+          path: file.path,
+          size: file.size,
+          mimetype: file.mimetype
+        });
+      });
+    }
 
     // Upload images to Cloudinary
     const imageUrls: string[] = [];
     if (files && files.length > 0) {
       for (const file of files) {
-        const result = await cloudinary.uploader.upload(file.path, {
-          folder: 'facilities',
-          width: 1000,
-          crop: 'scale'
-        });
-        imageUrls.push(result.secure_url);
+        try {
+          console.log('Uploading to Cloudinary:', file.path);
+          const result = await cloudinary.uploader.upload(file.path, {
+            folder: 'facilities',
+            width: 1000,
+            crop: 'scale'
+          });
+          console.log('Cloudinary upload successful:', result.secure_url);
+          imageUrls.push(result.secure_url);
+          
+          // Clean up uploaded file after Cloudinary upload
+          fs.unlink(file.path, (err) => {
+            if (err) {
+              console.error('Error deleting file:', err);
+            }
+          });
+        } catch (uploadError) {
+          console.error('Cloudinary upload error:', uploadError);
+          // Clean up file even if upload fails
+          fs.unlink(file.path, (err) => {
+            if (err) {
+              console.error('Error deleting file:', err);
+            }
+          });
+          throw uploadError;
+        }
       }
     }
+
+    // Parse amenities if provided as string
+    let amenitiesArray: string[] = [];
+    if (amenities) {
+      if (typeof amenities === 'string') {
+        amenitiesArray = amenities.split(',').map(item => item.trim());
+      } else if (Array.isArray(amenities)) {
+        amenitiesArray = amenities;
+      }
+    }
+
+    // Use default image if no images uploaded
+    const finalImages = imageUrls.length > 0 ? imageUrls : [
+      'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=800&h=600&fit=crop'
+    ];
 
     const facility = await Facility.create({
       name,
       description,
       location,
-      images: imageUrls,
+      images: finalImages,
+      pricing: {
+        basePrice: pricing?.basePrice || 0,
+        peakHourPrice: pricing?.peakHourPrice || 0,
+        weekendPrice: pricing?.weekendPrice || 0,
+        currency: pricing?.currency || 'INR'
+      },
+      amenities: amenitiesArray,
       owner: req.user!._id
     });
 
@@ -158,18 +214,36 @@ export const updateFacility = async (req: AuthRequest, res: Response): Promise<v
     }
 
     const files = req.files as Express.Multer.File[];
-    const { name, description, location } = req.body;
+    const { name, description, location, pricing, amenities } = req.body;
 
     // Handle image uploads if new images are provided
     if (files && files.length > 0) {
       const imageUrls: string[] = [];
       for (const file of files) {
-        const result = await cloudinary.uploader.upload(file.path, {
-          folder: 'facilities',
-          width: 1000,
-          crop: 'scale'
-        });
-        imageUrls.push(result.secure_url);
+        try {
+          const result = await cloudinary.uploader.upload(file.path, {
+            folder: 'facilities',
+            width: 1000,
+            crop: 'scale'
+          });
+          imageUrls.push(result.secure_url);
+          
+          // Clean up uploaded file after Cloudinary upload
+          fs.unlink(file.path, (err) => {
+            if (err) {
+              console.error('Error deleting file:', err);
+            }
+          });
+        } catch (uploadError) {
+          console.error('Cloudinary upload error:', uploadError);
+          // Clean up file even if upload fails
+          fs.unlink(file.path, (err) => {
+            if (err) {
+              console.error('Error deleting file:', err);
+            }
+          });
+          throw uploadError;
+        }
       }
       
       // Combine existing and new images
@@ -177,9 +251,35 @@ export const updateFacility = async (req: AuthRequest, res: Response): Promise<v
       facility.images = [...existingImages, ...imageUrls];
     }
 
+    // Parse amenities if provided
+    let amenitiesArray: string[] = [];
+    if (amenities) {
+      if (typeof amenities === 'string') {
+        amenitiesArray = amenities.split(',').map(item => item.trim());
+      } else if (Array.isArray(amenities)) {
+        amenitiesArray = amenities;
+      }
+    }
+
+    // Prepare update data
+    const updateData: any = { name, description, location, images: facility.images };
+    
+    if (pricing) {
+      updateData.pricing = {
+        basePrice: pricing.basePrice || facility.pricing?.basePrice || 0,
+        peakHourPrice: pricing.peakHourPrice || facility.pricing?.peakHourPrice || 0,
+        weekendPrice: pricing.weekendPrice || facility.pricing?.weekendPrice || 0,
+        currency: pricing.currency || facility.pricing?.currency || 'INR'
+      };
+    }
+    
+    if (amenitiesArray.length > 0) {
+      updateData.amenities = amenitiesArray;
+    }
+
     facility = await Facility.findByIdAndUpdate(
       req.params.id,
-      { name, description, location, images: facility.images },
+      updateData,
       {
         new: true,
         runValidators: true

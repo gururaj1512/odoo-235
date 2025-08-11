@@ -47,23 +47,23 @@ const Facilities: React.FC = () => {
     { name: 'Basketball', value: 'Basketball', icon: '🏀' },
   ];
 
-  // Mock data for demonstration - in real app this would come from API
-  const mockVenues = facilities.map((facility, index) => ({
+  // Transform facilities data for display
+  const venues = facilities.map((facility) => ({
     id: facility._id,
     name: facility.name,
     location: `${facility.location.city}, ${facility.location.state}`,
     distance: `${Math.floor(Math.random() * 10) + 1} km`,
     rating: 4.5 + Math.random() * 0.5,
     reviews: Math.floor(Math.random() * 500) + 50,
-    pricePerHour: Math.floor(Math.random() * 800) + 400,
-    sport: 'Badminton',
-    image: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=400&h=300&fit=crop',
+    pricePerHour: facility.pricing?.basePrice || Math.floor(Math.random() * 800) + 400,
+    sport: facility.courts?.[0]?.sportType || 'Badminton',
+    image: facility.images?.[0] || 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=400&h=300&fit=crop',
     occupancy: Math.floor(Math.random() * 100),
-    amenities: ['AC', 'Parking', 'Shower', 'Cafe'].slice(0, Math.floor(Math.random() * 4) + 1),
+    amenities: facility.amenities || ['AC', 'Parking', 'Shower', 'Cafe'].slice(0, Math.floor(Math.random() * 4) + 1),
     availableSlots: Math.floor(Math.random() * 20) + 5,
   }));
 
-  const filteredVenues = mockVenues.filter(venue => {
+  const filteredVenues = venues.filter(venue => {
     const matchesSearch = venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          venue.location.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesSport = !selectedSport || venue.sport === selectedSport;

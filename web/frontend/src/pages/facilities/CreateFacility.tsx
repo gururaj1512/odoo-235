@@ -10,7 +10,8 @@ import {
   Building2, 
   Save,
   Plus,
-  Trash2
+  Trash2,
+  DollarSign
 } from 'lucide-react';
 import { AppDispatch } from '@/redux/store';
 import { createFacility } from '@/redux/slices/facilitySlice';
@@ -27,6 +28,12 @@ interface FormData {
   };
   images: File[];
   amenities: string[];
+  pricing: {
+    basePrice: number;
+    peakHourPrice: number;
+    weekendPrice: number;
+    currency: string;
+  };
 }
 
 const CreateFacility: React.FC = () => {
@@ -43,21 +50,39 @@ const CreateFacility: React.FC = () => {
       zipCode: ''
     },
     images: [],
-    amenities: []
+    amenities: [],
+    pricing: {
+      basePrice: 0,
+      peakHourPrice: 0,
+      weekendPrice: 0,
+      currency: 'INR'
+    }
   });
   const [newAmenity, setNewAmenity] = useState('');
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     if (name.includes('.')) {
       const [parent, child] = name.split('.');
-      setFormData(prev => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent as keyof FormData],
-          [child]: value
-        }
-      }));
+      if (parent === 'location') {
+        setFormData(prev => ({
+          ...prev,
+          location: {
+            ...prev.location,
+            [child]: value
+          }
+        }));
+      } else if (parent === 'pricing') {
+        setFormData(prev => ({
+          ...prev,
+          pricing: {
+            ...prev.pricing,
+            [child]: child === 'basePrice' || child === 'peakHourPrice' || child === 'weekendPrice' 
+              ? Number(value) 
+              : value
+          }
+        }));
+      }
     } else {
       setFormData(prev => ({
         ...prev,
@@ -101,8 +126,8 @@ const CreateFacility: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.description || !formData.location.address) {
-      toast.error('Please fill in all required fields');
+    if (!formData.name || !formData.description || !formData.location.address || !formData.pricing.basePrice) {
+      toast.error('Please fill in all required fields including base price');
       return;
     }
 
@@ -308,6 +333,81 @@ const CreateFacility: React.FC = () => {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Pricing Information */}
+          <div className="bg-white rounded-2xl shadow-sm border p-6">
+            <h2 className="text-xl font-bold text-qc-text mb-6 flex items-center gap-2">
+              <DollarSign className="w-5 h-5" />
+              Pricing Information
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Base Price per Hour *
+                </label>
+                <input
+                  type="number"
+                  name="pricing.basePrice"
+                  value={formData.pricing.basePrice}
+                  onChange={handleInputChange}
+                  min="0"
+                  step="0.01"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-qc-primary/20 focus:border-qc-primary transition-colors"
+                  placeholder="Enter base price per hour"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Peak Hour Price (Optional)
+                </label>
+                <input
+                  type="number"
+                  name="pricing.peakHourPrice"
+                  value={formData.pricing.peakHourPrice}
+                  onChange={handleInputChange}
+                  min="0"
+                  step="0.01"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-qc-primary/20 focus:border-qc-primary transition-colors"
+                  placeholder="Enter peak hour price"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Weekend Price (Optional)
+                </label>
+                <input
+                  type="number"
+                  name="pricing.weekendPrice"
+                  value={formData.pricing.weekendPrice}
+                  onChange={handleInputChange}
+                  min="0"
+                  step="0.01"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-qc-primary/20 focus:border-qc-primary transition-colors"
+                  placeholder="Enter weekend price"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Currency
+                </label>
+                <select
+                  name="pricing.currency"
+                  value={formData.pricing.currency}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-qc-primary/20 focus:border-qc-primary transition-colors"
+                >
+                  <option value="INR">INR (₹)</option>
+                  <option value="USD">USD ($)</option>
+                  <option value="EUR">EUR (€)</option>
+                </select>
+              </div>
             </div>
           </div>
 

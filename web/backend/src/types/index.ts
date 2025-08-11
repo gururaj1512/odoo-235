@@ -26,6 +26,13 @@ export interface IFacility {
   images: string[];
   owner: string | IUser;
   isActive: boolean;
+  pricing: {
+    basePrice: number;
+    peakHourPrice?: number;
+    weekendPrice?: number;
+    currency?: string;
+  };
+  amenities?: string[];
   createdAt: Date;
   updatedAt: Date;
 }

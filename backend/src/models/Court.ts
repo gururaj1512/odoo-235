@@ -1,0 +1,50 @@
+import mongoose, { Document, Schema } from 'mongoose';
+import { ICourt } from '../types';
+
+export interface ICourtDocument extends ICourt, Document {}
+
+const courtSchema = new Schema<ICourtDocument>({
+  name: {
+    type: String,
+    required: [true, 'Please add a court name'],
+    trim: true,
+    maxlength: [50, 'Name cannot be more than 50 characters']
+  },
+  sportType: {
+    type: String,
+    required: [true, 'Please add a sport type'],
+    enum: ['Tennis', 'Basketball', 'Badminton', 'Squash', 'Volleyball', 'Other']
+  },
+  sport: {
+    type: Schema.Types.ObjectId,
+    ref: 'Sport',
+    required: [true, 'Please specify the sport']
+  },
+  surfaceType: {
+    type: String,
+    required: [true, 'Please add a surface type'],
+    enum: ['Hard Court', 'Clay', 'Grass', 'Synthetic', 'Wood', 'Other']
+  },
+  pricePerHour: {
+    type: Number,
+    required: [true, 'Please add a price per hour'],
+    min: [0, 'Price cannot be negative']
+  },
+  images: [{
+    type: String,
+    required: [true, 'Please add at least one image']
+  }],
+  isAvailable: {
+    type: Boolean,
+    default: true
+  },
+  facility: {
+    type: Schema.Types.ObjectId,
+    ref: 'Facility',
+    required: true
+  }
+}, {
+  timestamps: true
+});
+
+export default mongoose.model<ICourtDocument>('Court', courtSchema);

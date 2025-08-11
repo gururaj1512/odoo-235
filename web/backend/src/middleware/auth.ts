@@ -7,8 +7,13 @@ import { AuthRequest, JwtPayload } from '../types';
 export const protect = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   let token: string | undefined;
 
+  // Check for token in Authorization header
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     token = req.headers.authorization.split(' ')[1];
+  }
+  // Check for token in cookies
+  else if (req.cookies && req.cookies.token) {
+    token = req.cookies.token;
   }
 
   // Make sure token exists

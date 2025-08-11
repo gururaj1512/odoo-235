@@ -4,6 +4,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 import path from 'path';
 import fs from 'fs';
 
@@ -18,6 +19,7 @@ import auth from './routes/auth';
 import facilities from './routes/facilities';
 import courts from './routes/courts';
 import bookings from './routes/bookings';
+import sports from './routes/sports';
 
 // Error handling middleware
 import { notFound, errorHandler } from './middleware/error';
@@ -41,6 +43,9 @@ if (!fs.existsSync(uploadsDir)) {
 // Body parser
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Cookie parser
+app.use(cookieParser());
 
 // Security middleware
 app.use(helmet());
@@ -71,6 +76,7 @@ app.use('/api/auth', auth);
 app.use('/api/facilities', facilities);
 app.use('/api/courts', courts);
 app.use('/api/bookings', bookings);
+app.use('/api/sports', sports);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

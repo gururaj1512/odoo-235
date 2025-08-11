@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { AppDispatch } from '@/redux/store';
 import { motion } from 'framer-motion';
 import { 
@@ -15,16 +16,19 @@ import {
   User,
   Building2,
   BookOpen,
-  Home
+  Home,
+  Shield
 } from 'lucide-react';
 import { RootState } from '@/redux/store';
-import { logout } from '@/redux/slices/authSlice';
+import { logoutUser } from '@/redux/slices/authSlice';
 import { fetchFacilities } from '@/redux/slices/facilitySlice';
 import { fetchBookings } from '@/redux/slices/bookingSlice';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 const Dashboard: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
   const { facilities, loading: facilitiesLoading } = useSelector((state: RootState) => state.facilities);
   const { bookings, loading: bookingsLoading } = useSelector((state: RootState) => state.bookings);
@@ -39,13 +43,76 @@ const Dashboard: React.FC = () => {
   }, [dispatch, isAuthenticated]);
 
   const handleLogout = () => {
-    dispatch(logout());
+    dispatch(logoutUser());
+    navigate('/');
+  };
+
+  const handleTabClick = (tabId: string) => {
+    setActiveTab(tabId);
+    
+    // Navigate to appropriate pages based on tab
+    switch (tabId) {
+      case 'facilities':
+        navigate('/facilities');
+        break;
+      case 'bookings':
+        navigate('/bookings');
+        break;
+      case 'profile':
+        navigate('/profile');
+        break;
+      case 'owner-dashboard':
+        navigate('/owner-dashboard');
+        break;
+      case 'admin-dashboard':
+        navigate('/admin-dashboard');
+        break;
+      case 'analytics':
+        // Analytics page would be implemented later
+        console.log('Analytics page - coming soon');
+        break;
+      case 'settings':
+        // Settings page would be implemented later
+        console.log('Settings page - coming soon');
+        break;
+      default:
+        // Stay on dashboard overview
+        break;
+    }
+  };
+
+  const handleQuickAction = (action: string) => {
+    switch (action) {
+      case 'addFacility':
+        navigate('/facilities/create');
+        break;
+      case 'viewBookings':
+        navigate('/bookings');
+        break;
+      case 'analytics':
+        console.log('Analytics - coming soon');
+        break;
+      case 'bookCourt':
+        navigate('/facilities');
+        break;
+      case 'browseFacilities':
+        navigate('/facilities');
+        break;
+      case 'viewBookings':
+        navigate('/bookings');
+        break;
+      default:
+        break;
+    }
   };
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Home },
     { id: 'facilities', label: 'Facilities', icon: Building2 },
     { id: 'bookings', label: 'Bookings', icon: BookOpen },
+    { id: 'profile', label: 'Profile', icon: User },
+    ...(user?.role === 'Owner' ? [{ id: 'owner-dashboard', label: 'Owner Dashboard', icon: Building2 }] : []),
+    ...(user?.role === 'Admin' ? [{ id: 'admin-dashboard', label: 'Admin Dashboard', icon: Shield }] : []),
     { id: 'analytics', label: 'Analytics', icon: TrendingUp },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
@@ -96,7 +163,7 @@ const Dashboard: React.FC = () => {
             {tabs.map(tab => (
               <motion.button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabClick(tab.id)}
                 className={`w-full flex items-center px-6 py-3 text-left transition-colors ${
                   activeTab === tab.id
                     ? 'bg-qc-primary/10 text-qc-primary border-r-2 border-qc-primary'
@@ -142,6 +209,7 @@ const Dashboard: React.FC = () => {
                     className="px-4 py-2 bg-qc-primary text-white rounded-qc-radius hover:bg-qc-primary/90 transition-colors flex items-center"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
+                    onClick={() => handleQuickAction('addFacility')}
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Add Facility
@@ -241,19 +309,28 @@ const Dashboard: React.FC = () => {
                   <div className="bg-white rounded-2xl shadow-sm border p-6">
                     <h3 className="text-lg font-bold text-qc-text mb-4">Quick Actions</h3>
                     <div className="space-y-3">
-                      <button className="w-full text-left p-3 rounded-lg border hover:bg-gray-50 transition-colors">
+                      <button 
+                        className="w-full text-left p-3 rounded-lg border hover:bg-gray-50 transition-colors"
+                        onClick={() => handleQuickAction('addFacility')}
+                      >
                         <div className="flex items-center">
                           <Plus className="w-4 h-4 mr-3 text-qc-primary" />
                           <span className="text-sm font-medium">Add New Facility</span>
                         </div>
                       </button>
-                      <button className="w-full text-left p-3 rounded-lg border hover:bg-gray-50 transition-colors">
+                      <button 
+                        className="w-full text-left p-3 rounded-lg border hover:bg-gray-50 transition-colors"
+                        onClick={() => handleQuickAction('viewBookings')}
+                      >
                         <div className="flex items-center">
                           <Calendar className="w-4 h-4 mr-3 text-qc-accent" />
                           <span className="text-sm font-medium">View All Bookings</span>
                         </div>
                       </button>
-                      <button className="w-full text-left p-3 rounded-lg border hover:bg-gray-50 transition-colors">
+                      <button 
+                        className="w-full text-left p-3 rounded-lg border hover:bg-gray-50 transition-colors"
+                        onClick={() => handleQuickAction('analytics')}
+                      >
                         <div className="flex items-center">
                           <BarChart3 className="w-4 h-4 mr-3 text-qc-lilac" />
                           <span className="text-sm font-medium">Analytics Report</span>
@@ -302,19 +379,28 @@ const Dashboard: React.FC = () => {
                   <div className="bg-white rounded-2xl shadow-sm border p-6">
                     <h3 className="text-lg font-bold text-qc-text mb-4">Quick Actions</h3>
                     <div className="space-y-3">
-                      <button className="w-full text-left p-3 rounded-lg border hover:bg-gray-50 transition-colors">
+                      <button 
+                        className="w-full text-left p-3 rounded-lg border hover:bg-gray-50 transition-colors"
+                        onClick={() => handleQuickAction('bookCourt')}
+                      >
                         <div className="flex items-center">
                           <Calendar className="w-4 h-4 mr-3 text-qc-primary" />
                           <span className="text-sm font-medium">Book a Court</span>
                         </div>
                       </button>
-                      <button className="w-full text-left p-3 rounded-lg border hover:bg-gray-50 transition-colors">
+                      <button 
+                        className="w-full text-left p-3 rounded-lg border hover:bg-gray-50 transition-colors"
+                        onClick={() => handleQuickAction('viewBookings')}
+                      >
                         <div className="flex items-center">
                           <BookOpen className="w-4 h-4 mr-3 text-qc-accent" />
                           <span className="text-sm font-medium">View All Bookings</span>
                         </div>
                       </button>
-                      <button className="w-full text-left p-3 rounded-lg border hover:bg-gray-50 transition-colors">
+                      <button 
+                        className="w-full text-left p-3 rounded-lg border hover:bg-gray-50 transition-colors"
+                        onClick={() => handleQuickAction('browseFacilities')}
+                      >
                         <div className="flex items-center">
                           <Building2 className="w-4 h-4 mr-3 text-qc-lilac" />
                           <span className="text-sm font-medium">Browse Facilities</span>

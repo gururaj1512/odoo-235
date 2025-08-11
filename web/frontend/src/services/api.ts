@@ -9,7 +9,8 @@ import {
   User,
   Facility,
   Court,
-  Booking
+  Booking,
+  Sport
 } from '@/types';
 
 // Create axios instance
@@ -23,10 +24,7 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    // Token will be sent via cookies automatically
     return config;
   },
   (error) => {
@@ -39,7 +37,6 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -72,6 +69,16 @@ export const authApi = {
     const response = await api.put(`/auth/reset-password/${token}`, { password });
     return response.data;
   },
+  
+  logout: async (): Promise<ApiResponse<{ message: string }>> => {
+    const response = await api.post('/auth/logout');
+    return response.data;
+  },
+
+  updateProfile: async (profileData: Partial<User>): Promise<ApiResponse<User>> => {
+    const response = await api.put('/auth/profile', profileData);
+    return response.data;
+  },
 };
 
 // Facility API
@@ -98,6 +105,12 @@ export const facilityApi = {
     data.images.forEach((image) => {
       formData.append('images', image);
     });
+    
+    if (data.amenities) {
+      data.amenities.forEach((amenity) => {
+        formData.append('amenities[]', amenity);
+      });
+    }
 
     const response = await api.post('/facilities', formData, {
       headers: {
@@ -109,7 +122,6 @@ export const facilityApi = {
 
   updateFacility: async (id: string, data: Partial<CreateFacilityData>): Promise<ApiResponse<Facility>> => {
     const formData = new FormData();
-    
     if (data.name) formData.append('name', data.name);
     if (data.description) formData.append('description', data.description);
     if (data.location) {
@@ -124,6 +136,12 @@ export const facilityApi = {
         formData.append('images', image);
       });
     }
+    
+    if (data.amenities) {
+      data.amenities.forEach((amenity) => {
+        formData.append('amenities[]', amenity);
+      });
+    }
 
     const response = await api.put(`/facilities/${id}`, formData, {
       headers: {
@@ -133,8 +151,43 @@ export const facilityApi = {
     return response.data;
   },
 
-  deleteFacility: async (id: string): Promise<void> => {
-    await api.delete(`/facilities/${id}`);
+
+};
+
+// Sport API
+export const sportApi = {
+  getSports: async (): Promise<ApiResponse<Sport[]>> => {
+    const response = await api.get('/sports');
+    return response.data;
+  },
+
+  getSport: async (id: string): Promise<ApiResponse<Sport>> => {
+    const response = await api.get(`/sports/${id}`);
+    return response.data;
+  },
+
+  getPopularSports: async (limit?: number): Promise<ApiResponse<Sport[]>> => {
+    const response = await api.get(`/sports/popular${limit ? `?limit=${limit}` : ''}`);
+    return response.data;
+  },
+
+  createSport: async (data: Partial<Sport>): Promise<ApiResponse<Sport>> => {
+    const response = await api.post('/sports', data);
+    return response.data;
+  },
+
+  updateSport: async (id: string, data: Partial<Sport>): Promise<ApiResponse<Sport>> => {
+    const response = await api.put(`/sports/${id}`, data);
+    return response.data;
+  },
+
+  deleteSport: async (id: string): Promise<void> => {
+    await api.delete(`/sports/${id}`);
+  },
+
+  updateSportPopularity: async (id: string, increment: number = 1): Promise<ApiResponse<Sport>> => {
+    const response = await api.patch(`/sports/${id}/popularity`, { increment });
+    return response.data;
   },
 };
 
@@ -214,13 +267,13 @@ export const bookingApi = {
     return response.data;
   },
 
-  updateBookingStatus: async (id: string, status: string): Promise<ApiResponse<Booking>> => {
-    const response = await api.put(`/bookings/${id}/status`, { status });
+  cancelBooking: async (bookingId: string): Promise<ApiResponse<Booking>> => {
+    const response = await api.patch(`/bookings/${bookingId}/cancel`);
     return response.data;
   },
 
-  cancelBooking: async (id: string): Promise<ApiResponse<Booking>> => {
-    const response = await api.put(`/bookings/${id}/cancel`);
+  updateBookingStatus: async (id: string, status: string): Promise<ApiResponse<Booking>> => {
+    const response = await api.put(`/bookings/${id}/status`, { status });
     return response.data;
   },
 };

@@ -4,7 +4,7 @@ import { authApi } from '@/services/api';
 
 const initialState: AuthState = {
   user: null,
-  token: localStorage.getItem('token'),
+  token: null,
   isAuthenticated: false,
   loading: false,
   error: null,
@@ -16,7 +16,6 @@ export const login = createAsyncThunk(
   async (credentials: LoginCredentials, { rejectWithValue }) => {
     try {
       const response = await authApi.login(credentials);
-      localStorage.setItem('token', response.token);
       return response;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.error || 'Login failed');
@@ -29,7 +28,6 @@ export const register = createAsyncThunk(
   async (credentials: RegisterCredentials, { rejectWithValue }) => {
     try {
       const response = await authApi.register(credentials);
-      localStorage.setItem('token', response.token);
       return response;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.error || 'Registration failed');
@@ -66,10 +64,33 @@ export const resetPassword = createAsyncThunk(
   async ({ token, password }: { token: string; password: string }, { rejectWithValue }) => {
     try {
       const response = await authApi.resetPassword(token, password);
-      localStorage.setItem('token', response.token);
       return response;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.error || 'Failed to reset password');
+    }
+  }
+);
+
+export const logoutUser = createAsyncThunk(
+  'auth/logoutUser',
+  async (_, { rejectWithValue }) => {
+    try {
+      await authApi.logout();
+      return { success: true };
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.error || 'Logout failed');
+    }
+  }
+);
+
+export const updateProfile = createAsyncThunk(
+  'auth/updateProfile',
+  async (profileData: Partial<User>, { rejectWithValue }) => {
+    try {
+      const response = await authApi.updateProfile(profileData);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.error || 'Failed to update profile');
     }
   }
 );
@@ -83,7 +104,6 @@ const authSlice = createSlice({
       state.token = null;
       state.isAuthenticated = false;
       state.error = null;
-      localStorage.removeItem('token');
     },
     clearError: (state) => {
       state.error = null;
@@ -103,8 +123,8 @@ const authSlice = createSlice({
       .addCase(login.fulfilled, (state, action) => {
         state.loading = false;
         state.isAuthenticated = true;
-        state.user = action.payload.user;
-        state.token = action.payload.token;
+        state.user = action.payload.user || null;
+        state.token = action.payload.token || null;
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
@@ -118,8 +138,8 @@ const authSlice = createSlice({
       .addCase(register.fulfilled, (state, action) => {
         state.loading = false;
         state.isAuthenticated = true;
-        state.user = action.payload.user;
-        state.token = action.payload.token;
+        state.user = action.payload.user || null;
+        state.token = action.payload.token || null;
       })
       .addCase(register.rejected, (state, action) => {
         state.loading = false;
@@ -133,7 +153,7 @@ const authSlice = createSlice({
       .addCase(getMe.fulfilled, (state, action) => {
         state.loading = false;
         state.isAuthenticated = true;
-        state.user = action.payload.data;
+        state.user = action.payload.data || null;
       })
       .addCase(getMe.rejected, (state, action) => {
         state.loading = false;
@@ -163,11 +183,21 @@ const authSlice = createSlice({
       .addCase(resetPassword.fulfilled, (state, action) => {
         state.loading = false;
         state.isAuthenticated = true;
-        state.user = action.payload.user;
-        state.token = action.payload.token;
+        state.user = action.payload.user || null;
+        state.token = action.payload.token || null;
       })
       .addCase(resetPassword.rejected, (state, action) => {
         state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Logout
+      .addCase(logoutUser.fulfilled, (state) => {
+        state.user = null;
+        state.token = null;
+        state.isAuthenticated = false;
+        state.error = null;
+      })
+      .addCase(logoutUser.rejected, (state, action) => {
         state.error = action.payload as string;
       });
   },

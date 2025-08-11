@@ -5,7 +5,7 @@ import { RootState } from '@/redux/store';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: 'User' | 'Owner';
+  requiredRole?: 'User' | 'Owner' | 'Admin';
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole }) => {
@@ -14,7 +14,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-
+  console.log(user);
   if (requiredRole && user?.role !== requiredRole) {
     return <Navigate to="/dashboard" replace />;
   }

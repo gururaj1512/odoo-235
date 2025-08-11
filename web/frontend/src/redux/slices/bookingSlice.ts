@@ -19,12 +19,24 @@ const initialState: BookingState = {
 // Async thunks
 export const fetchBookings = createAsyncThunk(
   'bookings/fetchBookings',
-  async (facilityId?: string, { rejectWithValue }) => {
+  async (facilityId: string | undefined, { rejectWithValue }) => {
     try {
       const response = await bookingApi.getBookings(facilityId);
       return response;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.error || 'Failed to fetch bookings');
+    }
+  }
+);
+
+export const cancelBooking = createAsyncThunk(
+  'bookings/cancelBooking',
+  async (bookingId: string, { rejectWithValue }) => {
+    try {
+      const response = await bookingApi.cancelBooking(bookingId);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.error || 'Failed to cancel booking');
     }
   }
 );
@@ -65,18 +77,6 @@ export const updateBookingStatus = createAsyncThunk(
   }
 );
 
-export const cancelBooking = createAsyncThunk(
-  'bookings/cancelBooking',
-  async (id: string, { rejectWithValue }) => {
-    try {
-      const response = await bookingApi.cancelBooking(id);
-      return response;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.error || 'Failed to cancel booking');
-    }
-  }
-);
-
 const bookingSlice = createSlice({
   name: 'bookings',
   initialState,
@@ -113,7 +113,7 @@ const bookingSlice = createSlice({
       })
       .addCase(fetchBooking.fulfilled, (state, action) => {
         state.loading = false;
-        state.currentBooking = action.payload.data;
+        state.currentBooking = action.payload.data || null;
       })
       .addCase(fetchBooking.rejected, (state, action) => {
         state.loading = false;
@@ -126,7 +126,9 @@ const bookingSlice = createSlice({
       })
       .addCase(createBooking.fulfilled, (state, action) => {
         state.loading = false;
-        state.bookings.unshift(action.payload.data);
+        if (action.payload.data) {
+          state.bookings.unshift(action.payload.data);
+        }
       })
       .addCase(createBooking.rejected, (state, action) => {
         state.loading = false;
@@ -139,12 +141,14 @@ const bookingSlice = createSlice({
       })
       .addCase(updateBookingStatus.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.bookings.findIndex(b => b._id === action.payload.data._id);
-        if (index !== -1) {
-          state.bookings[index] = action.payload.data;
-        }
-        if (state.currentBooking?._id === action.payload.data._id) {
-          state.currentBooking = action.payload.data;
+        if (action.payload.data) {
+          const index = state.bookings.findIndex(b => b._id === action.payload.data._id);
+          if (index !== -1) {
+            state.bookings[index] = action.payload.data;
+          }
+          if (state.currentBooking?._id === action.payload.data._id) {
+            state.currentBooking = action.payload.data;
+          }
         }
       })
       .addCase(updateBookingStatus.rejected, (state, action) => {
@@ -158,12 +162,14 @@ const bookingSlice = createSlice({
       })
       .addCase(cancelBooking.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.bookings.findIndex(b => b._id === action.payload.data._id);
-        if (index !== -1) {
-          state.bookings[index] = action.payload.data;
-        }
-        if (state.currentBooking?._id === action.payload.data._id) {
-          state.currentBooking = action.payload.data;
+        if (action.payload.data) {
+          const index = state.bookings.findIndex(b => b._id === action.payload.data._id);
+          if (index !== -1) {
+            state.bookings[index] = action.payload.data;
+          }
+          if (state.currentBooking?._id === action.payload.data._id) {
+            state.currentBooking = action.payload.data;
+          }
         }
       })
       .addCase(cancelBooking.rejected, (state, action) => {

@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { Toaster } from 'react-hot-toast';
 import { AppDispatch, RootState } from './redux/store';
@@ -11,6 +11,9 @@ import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
 import Dashboard from './pages/Dashboard';
+import Profile from './pages/Profile';
+import OwnerDashboard from './pages/owner/OwnerDashboard';
+import AdminDashboard from './pages/admin/AdminDashboard';
 import Facilities from './pages/facilities/Facilities';
 import FacilityDetail from './pages/facilities/FacilityDetail';
 import CreateFacility from './pages/facilities/CreateFacility';
@@ -24,9 +27,17 @@ import CreateBooking from './pages/bookings/CreateBooking';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import LoadingSpinner from './components/common/LoadingSpinner';
 
+import Chatbot from './components/Chatbot';
+import ChatButton from './components/ChatButton';
+// import VoiceNavigation from './components/VoiceNavigation';
+// import VoiceNavigationButton from './components/VoiceNavigationButton';
+
 function App() {
   const dispatch = useDispatch<AppDispatch>();
   const { isAuthenticated, loading, token } = useSelector((state: RootState) => state.auth);
+  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
+  const [isVoiceNavigationOpen, setIsVoiceNavigationOpen] = useState(false);
+  // const navigate = useNavigate();
 
   useEffect(() => {
     if (token && !isAuthenticated) {
@@ -55,13 +66,24 @@ function App() {
               <Dashboard />
             </ProtectedRoute>
           } />
-          
-          {/* Facility Routes */}
-          <Route path="/facilities" element={
-            <ProtectedRoute>
-              <Facilities />
+          <Route path="/owner-dashboard" element={
+            <ProtectedRoute requiredRole="Owner">
+              <OwnerDashboard />
             </ProtectedRoute>
           } />
+          <Route path="/admin-dashboard" element={
+            <ProtectedRoute requiredRole="Admin">
+              <AdminDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          } />
+          
+          {/* Facility Routes */}
+          <Route path="/facilities" element={<Facilities />} />
           <Route path="/facilities/create" element={
             <ProtectedRoute requiredRole="Owner">
               <CreateFacility />
@@ -102,6 +124,9 @@ function App() {
           {/* Default redirect */}
           <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} />} />
         </Routes>
+
+        <ChatButton onClick={() => setIsChatbotOpen(true)} />
+        <Chatbot isOpen={isChatbotOpen} onClose={() => setIsChatbotOpen(false)} />
         
         <Toaster
           position="top-right"

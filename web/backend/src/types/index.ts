@@ -33,6 +33,7 @@ export interface IFacility {
 export interface ICourt {
   name: string;
   sportType: string;
+  sport: string | ISport;
   surfaceType: string;
   pricePerHour: number;
   images: string[];
@@ -57,6 +58,21 @@ export interface IBooking {
   updatedAt: Date;
 }
 
+export interface ISport {
+  name: string;
+  description: string;
+  category: 'Indoor' | 'Outdoor' | 'Both';
+  playersPerTeam: number;
+  maxPlayers: number;
+  equipment: string[];
+  rules: string[];
+  icon: string;
+  isActive: boolean;
+  popularity: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface AuthRequest {
   user?: IUser & { _id: string };
   params: any;
@@ -64,6 +80,7 @@ export interface AuthRequest {
   body: any;
   files?: Express.Multer.File[] | { [fieldname: string]: Express.Multer.File[] };
   headers: any;
+  cookies: any;
 }
 
 export interface JwtPayload {

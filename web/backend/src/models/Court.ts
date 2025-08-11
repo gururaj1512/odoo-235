@@ -15,6 +15,11 @@ const courtSchema = new Schema<ICourtDocument>({
     required: [true, 'Please add a sport type'],
     enum: ['Tennis', 'Basketball', 'Badminton', 'Squash', 'Volleyball', 'Other']
   },
+  sport: {
+    type: Schema.Types.ObjectId,
+    ref: 'Sport',
+    required: [true, 'Please specify the sport']
+  },
   surfaceType: {
     type: String,
     required: [true, 'Please add a surface type'],

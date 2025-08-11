@@ -2,10 +2,17 @@ export interface User {
   _id: string;
   name: string;
   email: string;
-  role: 'User' | 'Owner';
+  role: 'User' | 'Owner' | 'Admin';
+  phone?: string;
+  avatar?: string;
   isEmailVerified: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ChatMessage {
+  sender: 'user' | 'bot';
+  text: string;
 }
 
 export interface Facility {
@@ -73,6 +80,8 @@ export interface ApiResponse<T> {
   count?: number;
   error?: string;
   message?: string;
+  token?: string;
+  user?: any;
 }
 
 export interface LoginCredentials {
@@ -84,7 +93,7 @@ export interface RegisterCredentials {
   name: string;
   email: string;
   password: string;
-  role: 'User' | 'Owner';
+  role: 'User' | 'Owner' | 'Admin';
 }
 
 export interface CreateFacilityData {
@@ -97,6 +106,7 @@ export interface CreateFacilityData {
     zipCode: string;
   };
   images: File[];
+  amenities: string[];
 }
 
 export interface CreateCourtData {
@@ -112,4 +122,20 @@ export interface CreateBookingData {
   date: string;
   startTime: string;
   endTime: string;
+}
+
+export interface Sport {
+  _id: string;
+  name: string;
+  description: string;
+  category: 'Indoor' | 'Outdoor' | 'Both';
+  playersPerTeam: number;
+  maxPlayers: number;
+  equipment: string[];
+  rules: string[];
+  icon: string;
+  isActive: boolean;
+  popularity: number;
+  createdAt: string;
+  updatedAt: string;
 }

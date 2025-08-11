@@ -56,6 +56,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Check for user
+    console.log(User.find());
     const user = await User.findOne({ email }).select('+password');
 
     if (!user) {
@@ -187,8 +188,13 @@ const sendTokenResponse = (user: any, statusCode: number, res: Response): void =
 
   const options = {
     expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-    httpOnly: true
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict' as const
   };
+
+  // Set cookie
+  res.cookie('token', token, options);
 
   res.status(statusCode).json({
     success: true,
@@ -200,5 +206,20 @@ const sendTokenResponse = (user: any, statusCode: number, res: Response): void =
       role: user.role,
       isEmailVerified: user.isEmailVerified
     }
+  });
+};
+
+// @desc    Logout user / clear cookie
+// @route   POST /api/auth/logout
+// @access  Private
+export const logout = async (req: Request, res: Response): Promise<void> => {
+  res.cookie('token', 'none', {
+    expires: new Date(Date.now() + 10 * 1000),
+    httpOnly: true,
+  });
+
+  res.status(200).json({
+    success: true,
+    message: 'User logged out successfully'
   });
 };

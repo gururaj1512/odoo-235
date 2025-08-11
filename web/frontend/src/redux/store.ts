@@ -5,6 +5,7 @@ import authReducer from './slices/authSlice';
 import facilityReducer from './slices/facilitySlice';
 import courtReducer from './slices/courtSlice';
 import bookingReducer from './slices/bookingSlice';
+import sportReducer from './slices/sportSlice';
 
 const persistConfig = {
   key: 'root',
@@ -20,6 +21,7 @@ export const store = configureStore({
     facilities: facilityReducer,
     courts: courtReducer,
     bookings: bookingReducer,
+    sports: sportReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

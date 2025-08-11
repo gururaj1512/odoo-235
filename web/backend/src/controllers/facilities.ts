@@ -8,9 +8,44 @@ import { AuthRequest } from '../types';
 // @access  Public
 export const getFacilities = async (req: Request, res: Response): Promise<void> => {
   try {
-    const facilities = await Facility.find({ isActive: true })
+    const { sport, category, search, sort } = req.query;
+    
+    let query: any = { isActive: true };
+    
+    // Filter by sport
+    if (sport) {
+      query['courts.sport'] = sport;
+    }
+    
+    // Filter by category
+    if (category) {
+      query['courts.sportType'] = category;
+    }
+    
+    // Search functionality
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { 'location.city': { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    let sortOption: any = { createdAt: -1 };
+    if (sort === 'rating') sortOption = { rating: -1 };
+    if (sort === 'price') sortOption = { 'courts.pricePerHour': 1 };
+    if (sort === 'name') sortOption = { name: 1 };
+
+    const facilities = await Facility.find(query)
       .populate('owner', 'name email')
-      .populate('courts');
+      .populate({
+        path: 'courts',
+        populate: {
+          path: 'sport',
+          select: 'name icon category'
+        }
+      })
+      .sort(sortOption);
 
     res.status(200).json({
       success: true,

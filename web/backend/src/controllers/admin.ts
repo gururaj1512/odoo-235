@@ -16,17 +16,168 @@ export const getGlobalStats = async (req: AuthRequest, res: Response): Promise<v
     const totalBookings = await Booking.countDocuments();
     const totalActiveCourts = await Court.countDocuments({ isAvailable: true });
     const pendingFacilities = await Facility.countDocuments({ approvalStatus: 'pending' });
+    const activeFacilities = await Facility.countDocuments({ approvalStatus: 'approved', isActive: true });
 
-    // Calculate total earnings (sum of all booking amounts)
+    // Calculate total earnings from all turfs/facilities (sum of all booking amounts)
     const earningsResult = await Booking.aggregate([
       {
         $group: {
           _id: null,
-          totalEarnings: { $sum: '$totalAmount' }
+          totalEarnings: { $sum: '$totalAmount' },
+          totalBookings: { $sum: 1 }
         }
       }
     ]);
     const totalEarnings = earningsResult.length > 0 ? earningsResult[0].totalEarnings : 0;
+    const totalBookingsCount = earningsResult.length > 0 ? earningsResult[0].totalBookings : 0;
+
+    // Get monthly income breakdown for dynamic income tracking
+    const monthlyIncome = await Booking.aggregate([
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' }
+          },
+          monthlyRevenue: { $sum: '$totalAmount' },
+          monthlyBookings: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { '_id.year': -1, '_id.month': -1 }
+      },
+      {
+        $limit: 12
+      }
+    ]);
+
+    // Get today's income
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const todayIncomeResult = await Booking.aggregate([
+      {
+        $match: {
+          createdAt: {
+            $gte: today,
+            $lt: tomorrow
+          }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          todayRevenue: { $sum: '$totalAmount' },
+          todayBookings: { $sum: 1 }
+        }
+      }
+    ]);
+    const todayIncome = todayIncomeResult.length > 0 ? todayIncomeResult[0].todayRevenue : 0;
+    const todayBookings = todayIncomeResult.length > 0 ? todayIncomeResult[0].todayBookings : 0;
+
+    // Get this month's income
+    const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const thisMonthIncomeResult = await Booking.aggregate([
+      {
+        $match: {
+          createdAt: {
+            $gte: thisMonthStart
+          }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          thisMonthRevenue: { $sum: '$totalAmount' },
+          thisMonthBookings: { $sum: 1 }
+        }
+      }
+    ]);
+    const thisMonthIncome = thisMonthIncomeResult.length > 0 ? thisMonthIncomeResult[0].thisMonthRevenue : 0;
+    const thisMonthBookings = thisMonthIncomeResult.length > 0 ? thisMonthIncomeResult[0].thisMonthBookings : 0;
+
+    // Get detailed revenue breakdown by facility/turf
+    const revenueByFacility = await Booking.aggregate([
+      {
+        $lookup: {
+          from: 'facilities',
+          localField: 'facility',
+          foreignField: '_id',
+          as: 'facilityData'
+        }
+      },
+      {
+        $unwind: '$facilityData'
+      },
+      {
+        $group: {
+          _id: '$facilityData._id',
+          facilityName: { $first: '$facilityData.name' },
+          facilityLocation: { $first: '$facilityData.location' },
+          totalBookings: { $sum: 1 },
+          totalRevenue: { $sum: '$totalAmount' },
+          averageBookingValue: { $avg: '$totalAmount' }
+        }
+      },
+      {
+        $sort: { totalRevenue: -1 }
+      }
+    ]);
+
+    // Get revenue by sport type
+    const revenueBySport = await Booking.aggregate([
+      {
+        $lookup: {
+          from: 'courts',
+          localField: 'court',
+          foreignField: '_id',
+          as: 'courtData'
+        }
+      },
+      {
+        $unwind: '$courtData'
+      },
+      {
+        $group: {
+          _id: '$courtData.sportType',
+          totalBookings: { $sum: 1 },
+          totalRevenue: { $sum: '$totalAmount' },
+          averageBookingValue: { $avg: '$totalAmount' }
+        }
+      },
+      {
+        $sort: { totalRevenue: -1 }
+      }
+    ]);
+
+    // Get booking statistics by facility/turf
+    const bookingStatsByFacility = await Booking.aggregate([
+      {
+        $lookup: {
+          from: 'facilities',
+          localField: 'facility',
+          foreignField: '_id',
+          as: 'facilityData'
+        }
+      },
+      {
+        $unwind: '$facilityData'
+      },
+      {
+        $group: {
+          _id: '$facilityData._id',
+          facilityName: { $first: '$facilityData.name' },
+          totalBookings: { $sum: 1 },
+          totalRevenue: { $sum: '$totalAmount' },
+          averageRating: { $avg: '$facilityData.averageRating' }
+        }
+      },
+      {
+        $sort: { totalRevenue: -1 }
+      }
+    ]);
 
     // Get recent activity
     const recentBookings = await Booking.find()
@@ -45,11 +196,28 @@ export const getGlobalStats = async (req: AuthRequest, res: Response): Promise<v
         stats: {
           totalUsers,
           totalOwners,
-          totalBookings,
+          totalBookings: totalBookingsCount,
           totalActiveCourts,
           totalEarnings,
-          pendingFacilities
+          pendingFacilities,
+          activeFacilities
         },
+        dynamicIncome: {
+          totalRevenue: totalEarnings,
+          todayIncome,
+          todayBookings,
+          thisMonthIncome,
+          thisMonthBookings,
+          monthlyIncome,
+          averageBookingValue: totalBookingsCount > 0 ? totalEarnings / totalBookingsCount : 0
+        },
+        revenueBreakdown: {
+          totalRevenue: totalEarnings,
+          revenueByFacility,
+          revenueBySport,
+          averageBookingValue: totalBookingsCount > 0 ? totalEarnings / totalBookingsCount : 0
+        },
+        bookingStatsByFacility,
         recentBookings,
         recentUsers
       }

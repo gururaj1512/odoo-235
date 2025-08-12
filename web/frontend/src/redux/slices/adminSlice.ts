@@ -10,6 +10,22 @@ interface AdminState {
     totalActiveCourts: number;
     totalEarnings: number;
     pendingFacilities: number;
+    activeFacilities: number;
+  } | null;
+  dynamicIncome: {
+    totalRevenue: number;
+    todayIncome: number;
+    todayBookings: number;
+    thisMonthIncome: number;
+    thisMonthBookings: number;
+    monthlyIncome: any[];
+    averageBookingValue: number;
+  } | null;
+  revenueBreakdown: {
+    totalRevenue: number;
+    revenueByFacility: any[];
+    revenueBySport: any[];
+    averageBookingValue: number;
   } | null;
   pendingFacilities: {
     facilities: Facility[];
@@ -35,6 +51,8 @@ interface AdminState {
 
 const initialState: AdminState = {
   globalStats: null,
+  dynamicIncome: null,
+  revenueBreakdown: null,
   pendingFacilities: {
     facilities: [],
     pagination: null,
@@ -205,6 +223,8 @@ const adminSlice = createSlice({
       .addCase(fetchGlobalStats.fulfilled, (state, action) => {
         state.loading = false;
         state.globalStats = action.payload.data.stats;
+        state.dynamicIncome = action.payload.data.dynamicIncome;
+        state.revenueBreakdown = action.payload.data.revenueBreakdown;
       })
       .addCase(fetchGlobalStats.rejected, (state, action) => {
         state.loading = false;

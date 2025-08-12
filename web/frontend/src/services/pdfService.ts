@@ -12,14 +12,21 @@ interface AdminStats {
   activeFacilities: number;
   userRegistrationTrends: any[];
   bookingActivity: any[];
-  mostActiveSports: any[];
-  facilityPerformance: any[];
   platformGrowth: {
     userGrowth: number;
     bookingGrowth: number;
     revenueGrowth: number;
     facilityGrowth: number;
   };
+  dynamicIncome?: {
+    todayIncome: number;
+    todayBookings: number;
+    thisMonthIncome: number;
+    thisMonthBookings: number;
+    monthlyIncome: any[];
+    averageBookingValue: number;
+  };
+  revenueBreakdown?: any;
 }
 
 export class PDFService {
@@ -109,69 +116,74 @@ export class PDFService {
       },
     });
     
-    // Most Active Sports
-    doc.addPage();
-    doc.setFontSize(16);
-    doc.setTextColor(17, 24, 39);
-    doc.text('Sports Performance Analysis', 20, 20);
+
     
-    const sportsData = stats.mostActiveSports.map(sport => [
-      sport.sport,
-      sport.bookings.toString(),
-      `₹${sport.revenue.toLocaleString()}`,
-      `${((sport.bookings / stats.totalBookings) * 100).toFixed(1)}%`,
-      `₹${Math.round(sport.revenue / sport.bookings).toLocaleString()}`,
-    ]);
-    
-    autoTable(doc, {
-      head: [['Sport', 'Bookings', 'Revenue', 'Market Share', 'Avg Revenue/Booking']],
-      body: sportsData,
-      startY: 30,
-      styles: {
-        fontSize: 10,
-        cellPadding: 5,
-      },
-      headStyles: {
-        fillColor: [245, 158, 11], // Orange color
-        textColor: 255,
-        fontStyle: 'bold',
-      },
-      alternateRowStyles: {
-        fillColor: [248, 250, 252],
-      },
-    });
-    
-    // Top Performing Facilities
-    doc.setFontSize(16);
-    doc.setTextColor(17, 24, 39);
-    doc.text('Top Performing Facilities', 20, 100);
-    
-    const facilityData = stats.facilityPerformance.map(facility => [
-      facility.facility.length > 20 ? facility.facility.substring(0, 20) + '...' : facility.facility,
-      facility.bookings.toString(),
-      `₹${facility.revenue.toLocaleString()}`,
-      facility.rating > 0 ? facility.rating.toFixed(1) : 'N/A',
-      `${((facility.revenue / stats.totalRevenue) * 100).toFixed(1)}%`,
-    ]);
-    
-    autoTable(doc, {
-      head: [['Facility', 'Bookings', 'Revenue', 'Rating', 'Revenue Share']],
-      body: facilityData,
-      startY: 110,
-      styles: {
-        fontSize: 9,
-        cellPadding: 4,
-      },
-      headStyles: {
-        fillColor: [168, 85, 247], // Purple color
-        textColor: 255,
-        fontStyle: 'bold',
-      },
-      alternateRowStyles: {
-        fillColor: [248, 250, 252],
-      },
-    });
-    
+    // Dynamic Income Overview
+    if (stats.dynamicIncome) {
+      doc.addPage();
+      doc.setFontSize(16);
+      doc.setTextColor(17, 24, 39);
+      doc.text('Dynamic Income Overview', 20, 20);
+      
+      // Today's and Monthly Income
+      const incomeData = [
+        ['Period', 'Revenue', 'Bookings', 'Avg per Booking'],
+        ['Today', `₹${stats.dynamicIncome.todayIncome.toLocaleString()}`, stats.dynamicIncome.todayBookings.toString(), `₹${Math.round(stats.dynamicIncome.todayIncome / stats.dynamicIncome.todayBookings || 0).toLocaleString()}`],
+        ['This Month', `₹${stats.dynamicIncome.thisMonthIncome.toLocaleString()}`, stats.dynamicIncome.thisMonthBookings.toString(), `₹${Math.round(stats.dynamicIncome.thisMonthIncome / stats.dynamicIncome.thisMonthBookings || 0).toLocaleString()}`],
+        ['All Time', `₹${stats.totalRevenue.toLocaleString()}`, stats.totalBookings.toString(), `₹${stats.dynamicIncome.averageBookingValue.toLocaleString()}`],
+      ];
+      
+      autoTable(doc, {
+        head: [['Period', 'Revenue', 'Bookings', 'Avg per Booking']],
+        body: incomeData.slice(1),
+        startY: 30,
+        styles: {
+          fontSize: 10,
+          cellPadding: 5,
+        },
+        headStyles: {
+          fillColor: [34, 197, 94], // Green color
+          textColor: 255,
+          fontStyle: 'bold',
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252],
+        },
+      });
+      
+      // Monthly Income Trend
+      if (stats.dynamicIncome.monthlyIncome.length > 0) {
+        doc.setFontSize(14);
+        doc.setTextColor(17, 24, 39);
+        doc.text('Monthly Income Trend', 20, 100);
+        
+        const monthlyData = stats.dynamicIncome.monthlyIncome.slice(0, 6).map((month: any) => [
+          new Date(month._id.year, month._id.month - 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+          `₹${month.monthlyRevenue.toLocaleString()}`,
+          month.monthlyBookings.toString(),
+          `₹${Math.round(month.monthlyRevenue / month.monthlyBookings || 0).toLocaleString()}`,
+        ]);
+        
+        autoTable(doc, {
+          head: [['Month', 'Revenue', 'Bookings', 'Avg per Booking']],
+          body: monthlyData,
+          startY: 110,
+          styles: {
+            fontSize: 9,
+            cellPadding: 4,
+          },
+          headStyles: {
+            fillColor: [59, 130, 246], // Blue color
+            textColor: 255,
+            fontStyle: 'bold',
+          },
+          alternateRowStyles: {
+            fillColor: [248, 250, 252],
+          },
+        });
+      }
+    }
+
     // User Registration Trends
     doc.addPage();
     doc.setFontSize(16);
@@ -203,6 +215,40 @@ export class PDFService {
       },
     });
     
+    // Revenue Breakdown by Turfs (if available)
+    if (stats.revenueBreakdown?.revenueByFacility?.length > 0) {
+      doc.addPage();
+      doc.setFontSize(16);
+      doc.setTextColor(17, 24, 39);
+      doc.text('Revenue Breakdown by Turfs', 20, 20);
+      
+      const facilityData = stats.revenueBreakdown.revenueByFacility.slice(0, 10).map((facility: any) => [
+        facility.facilityName.length > 20 ? facility.facilityName.substring(0, 20) + '...' : facility.facilityName,
+        facility.totalBookings.toString(),
+        `₹${facility.totalRevenue.toLocaleString()}`,
+        `₹${Math.round(facility.averageBookingValue || 0).toLocaleString()}`,
+        `${((facility.totalRevenue / stats.totalRevenue) * 100).toFixed(1)}%`,
+      ]);
+      
+      autoTable(doc, {
+        head: [['Turf', 'Bookings', 'Revenue', 'Avg Booking', 'Revenue Share']],
+        body: facilityData,
+        startY: 30,
+        styles: {
+          fontSize: 9,
+          cellPadding: 4,
+        },
+        headStyles: {
+          fillColor: [168, 85, 247], // Purple color
+          textColor: 255,
+          fontStyle: 'bold',
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252],
+        },
+      });
+    }
+
     // Booking Activity Trends
     doc.setFontSize(16);
     doc.setTextColor(17, 24, 39);
@@ -331,14 +377,7 @@ export class PDFService {
       });
     }
     
-    // Sports Performance
-    const topSport = stats.mostActiveSports[0];
-    if (topSport && (topSport.bookings / stats.totalBookings) > 0.4) {
-      recommendations.push({
-        title: 'Diversify Sports Portfolio',
-        description: `Consider promoting other sports as ${topSport.sport} dominates ${((topSport.bookings / stats.totalBookings) * 100).toFixed(1)}% of bookings.`,
-      });
-    }
+
     
     // Platform Efficiency
     if (derivedStats.platformEfficiencyScore < 70) {

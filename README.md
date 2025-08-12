@@ -172,3 +172,7 @@ QuickCourt is an **end-to-end sports facility booking platform** that:
 
 ## 📷 Demo link
 https://drive.google.com/file/d/16RlIhlWWAOFPRyBU_VMf6n056f2YM1Uf/view?usp=drivesdk
+
+## Benchmarks
+<img width="2858" height="1302" alt="image" src="https://github.com/user-attachments/assets/235f54de-d430-4278-acc7-751f001a1c48" />
+

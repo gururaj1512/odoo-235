@@ -29,20 +29,26 @@ const Facilities: React.FC = () => {
   const navigate = useNavigate();
   const { facilities, loading, pagination, filters } = useSelector((state: RootState) => state.facilities);
   const { user } = useSelector((state: RootState) => state.auth);
+  const { popularSports } = useSelector((state: RootState) => state.sports);
   
   // Debug logging
-  console.log('Facilities state:', { facilities, loading, pagination, filters });
   
-  const [showFilters, setShowFilters] = useState(false);
-  const [searchQuery, setSearchQuery] = useState(filters.search || '');
-  const [selectedSport, setSelectedSport] = useState<string | null>(filters.sport || null);
-  const [sortBy, setSortBy] = useState(filters.sort || 'rating');
+  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedSport, setSelectedSport] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState('rating');
   const [currentPage, setCurrentPage] = useState(1);
+  const [showFilters, setShowFilters] = useState(false);
 
-  // Initial fetch on component mount
+  // Fetch facilities when component mounts or when filters/page changes
   useEffect(() => {
-    dispatch(fetchFacilities({ page: 1, limit: 12 }));
-  }, [dispatch]);
+    const params = {
+      page: currentPage,
+      limit: 12,
+      ...filters
+    };
+    dispatch(fetchFacilities(params));
+  }, [dispatch, filters, currentPage]);
 
   // Debounced search effect
   useEffect(() => {
@@ -56,45 +62,25 @@ const Facilities: React.FC = () => {
     return () => clearTimeout(timer);
   }, [searchQuery, dispatch, filters.search]);
 
-  // Fetch facilities when filters or page changes
-  useEffect(() => {
-    const params = {
-      ...filters,
-      page: currentPage,
-      limit: 12
-    };
-    dispatch(fetchFacilities(params));
-  }, [dispatch, filters, currentPage]);
-
-  const sports = [
-    { name: 'All Sports', value: 'all', icon: '🏟️' },
-    { name: 'Badminton', value: 'Badminton', icon: '🏸' },
-    { name: 'Tennis', value: 'Tennis', icon: '🎾' },
-    { name: 'Cricket', value: 'Cricket', icon: '🏏' },
-    { name: 'Football', value: 'Football', icon: '⚽' },
-    { name: 'Basketball', value: 'Basketball', icon: '🏀' },
-  ];
-
   // Transform facilities data for display
   const venues = facilities.map((facility) => {
-    console.log('Processing facility:', facility);
     return {
       id: facility._id,
       name: facility.name,
       location: `${facility.location.city}, ${facility.location.state}`,
-      distance: `${Math.floor(Math.random() * 10) + 1} km`,
-      rating: 4.5 + Math.random() * 0.5,
-      reviews: Math.floor(Math.random() * 500) + 50,
-      pricePerHour: facility.pricing?.basePrice || Math.floor(Math.random() * 800) + 400,
-      sport: facility.courts?.[0]?.sportType || 'Badminton',
+      distance: 'Nearby', // Remove random distance calculation
+      rating: 4.5, // Use default rating until we implement real ratings
+      reviews: 0, // Use 0 until we implement real reviews
+      pricePerHour: facility.pricing?.basePrice || 0,
+      sport: facility.courts?.[0]?.sportType || 'Multi-Sport',
       image: facility.images?.[0] || 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=400&h=300&fit=crop',
-      occupancy: Math.floor(Math.random() * 100),
-      amenities: facility.amenities || ['AC', 'Parking', 'Shower', 'Cafe'].slice(0, Math.floor(Math.random() * 4) + 1),
-      availableSlots: Math.floor(Math.random() * 20) + 5,
+      occupancy: 0, // Remove random occupancy - will be calculated from real bookings
+      amenities: facility.amenities || [],
+      availableSlots: 0, // Remove random slots - will be calculated from real availability
+      ownerId: typeof facility.owner === 'string' ? facility.owner : facility.owner?._id,
     };
   });
   
-  console.log('Transformed venues:', venues);
 
   const handleSportChange = (sport: string | null) => {
     setSelectedSport(sport);
@@ -135,85 +121,29 @@ const Facilities: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-qc-text">Sports Facilities</h1>
-              <p className="text-gray-600 mt-1">Discover and book courts near you</p>
-            </div>
-            
-            {user?.role === 'Owner' && (
-              <motion.button
-                onClick={() => navigate('/facilities/create')}
-                className="inline-flex items-center px-4 py-2 bg-qc-primary text-white rounded-qc-radius hover:bg-qc-primary/90 transition-colors"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Facility
-              </motion.button>
-            )}
-          </div>
-        </div>
-      </div>
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Search and Filters */}
-        <div className="bg-white rounded-2xl shadow-sm border p-6 mb-8">
-          <div className="flex flex-col lg:flex-row gap-4">
-            {/* Search Bar */}
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Search facilities, locations..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-qc-radius focus:ring-2 focus:ring-qc-primary/20 focus:border-qc-primary transition-colors"
-              />
-            </div>
-
-            {/* Sport Filter */}
-            <SportFilter
-              selectedSport={selectedSport}
-              onSportChange={handleSportChange}
-              className="lg:w-auto"
-            />
-
-            {/* Filter Button */}
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center px-4 py-3 rounded-qc-radius transition-colors ${
-                showFilters
-                  ? 'bg-qc-primary text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <Filter className="w-4 h-4 mr-2" />
-              Filters
-            </button>
+        {/* Page Header */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-qc-text">Sports Facilities</h1>
+            <p className="text-gray-600 mt-1">Discover and book courts near you</p>
           </div>
-
-          {/* Filter Panel */}
-          <AnimatePresence>
-            {showFilters && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mt-6 pt-6 border-t border-gray-200"
-              >
-                <FilterPanel 
-                  onClose={() => setShowFilters(false)}
-                  filters={filters}
-                  onFiltersChange={handleFiltersChange}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
+          
+          {user?.role === 'Owner' && (
+            <motion.button
+              onClick={() => navigate('/facilities/create')}
+              className="inline-flex items-center px-4 py-2 bg-qc-primary text-white rounded-qc-radius hover:bg-qc-primary/90 transition-colors"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Facility
+            </motion.button>
+          )}
         </div>
+
+        {/* Search and Filters */}
+        
 
         {/* Sort Options and Results Count */}
         <div className="flex items-center justify-between mb-6">
@@ -264,6 +194,7 @@ const Facilities: React.FC = () => {
                   <VenueCard
                     venue={venue}
                     onSelect={() => handleVenueSelect(venue)}
+                    showOwnerActions={user?.role === 'Owner'}
                   />
                 </motion.div>
               ))}

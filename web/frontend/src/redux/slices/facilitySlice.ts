@@ -42,7 +42,7 @@ const initialState: FacilityState = {
 // Async thunks
 export const fetchFacilities = createAsyncThunk(
   'facilities/fetchFacilities',
-  async (params?: {
+  async (params: {
     sport?: string;
     category?: string;
     search?: string;
@@ -54,7 +54,7 @@ export const fetchFacilities = createAsyncThunk(
     amenities?: string[];
     radius?: number;
     timeSlot?: string;
-  }, { rejectWithValue }) => {
+  } = {}, { rejectWithValue }) => {
     try {
       const response = await facilityApi.getFacilities(params);
       return response;
@@ -107,7 +107,8 @@ export const deleteFacility = createAsyncThunk(
       await facilityApi.deleteFacility(id);
       return id;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.error || 'Failed to delete facility');
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to delete facility';
+      return rejectWithValue(errorMessage);
     }
   }
 );

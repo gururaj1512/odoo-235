@@ -33,7 +33,7 @@ const OwnerBookings: React.FC = () => {
   const { facilities } = useSelector((state: RootState) => state.facilities);
   
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('Pending');
   const [facilityFilter, setFacilityFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -42,7 +42,7 @@ const OwnerBookings: React.FC = () => {
 
   useEffect(() => {
     if (user?.role === 'Owner') {
-      dispatch(fetchFacilities());
+      dispatch(fetchFacilities({}));
       loadBookings();
       loadAnalytics();
     }
@@ -124,6 +124,8 @@ const OwnerBookings: React.FC = () => {
     return matchesSearch;
   });
 
+
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -160,6 +162,14 @@ const OwnerBookings: React.FC = () => {
             </div>
             
             <div className="flex gap-3">
+              {ownerBookings.summary?.statusCounts?.Pending > 0 && (
+                <div className="flex items-center px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg">
+                  <AlertCircle className="w-4 h-4 mr-2" />
+                  <span className="font-medium">
+                    {ownerBookings.summary.statusCounts.Pending} Pending Bookings
+                  </span>
+                </div>
+              )}
               <button
                 onClick={() => setShowAnalytics(!showAnalytics)}
                 className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
@@ -409,9 +419,12 @@ const OwnerBookings: React.FC = () => {
                           <User className="w-4 h-4 text-gray-500" />
                           <span className="font-medium text-qc-text">{booking.user.name}</span>
                         </div>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(booking.status)}`}>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(booking.status)} ${booking.status === 'Pending' ? 'animate-pulse' : ''}`}>
                           {getStatusIcon(booking.status)}
                           {booking.status}
+                          {booking.status === 'Pending' && (
+                            <span className="ml-1 text-xs">(Action Required)</span>
+                          )}
                         </span>
                       </div>
                       
@@ -440,17 +453,19 @@ const OwnerBookings: React.FC = () => {
                         <>
                           <button
                             onClick={() => handleStatusUpdate(booking._id, 'Confirmed')}
-                            className="px-3 py-1 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600 transition-colors"
+                            className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 transition-colors flex items-center gap-1"
                           >
+                            <CheckCircle className="w-4 h-4" />
                             Approve
                           </button>
                           <button
                             onClick={() => {
-                              const reason = prompt('Enter cancellation reason (optional):');
+                              const reason = prompt('Enter rejection reason (optional):');
                               handleStatusUpdate(booking._id, 'Cancelled', reason || undefined);
                             }}
-                            className="px-3 py-1 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 transition-colors"
+                            className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors flex items-center gap-1"
                           >
+                            <XCircle className="w-4 h-4" />
                             Reject
                           </button>
                         </>
@@ -458,8 +473,9 @@ const OwnerBookings: React.FC = () => {
                       {booking.status === 'Confirmed' && (
                         <button
                           onClick={() => handleStatusUpdate(booking._id, 'Completed')}
-                          className="px-3 py-1 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors"
+                          className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors flex items-center gap-1"
                         >
+                          <CheckCircle className="w-4 h-4" />
                           Mark Complete
                         </button>
                       )}

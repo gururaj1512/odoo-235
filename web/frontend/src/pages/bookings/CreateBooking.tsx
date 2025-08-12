@@ -19,6 +19,8 @@ import { createBooking } from '@/redux/slices/bookingSlice';
 import { fetchFacility } from '@/redux/slices/facilitySlice';
 import { toast } from 'react-hot-toast';
 import { BookingDetails } from '@/types';
+import AvailableTimeSlots from '@/components/AvailableTimeSlots';
+import WeatherWidget from '@/components/WeatherWidget';
 
 interface BookingFormData {
   courtId: string;
@@ -46,6 +48,9 @@ const CreateBooking: React.FC = () => {
     duration: 1,
     totalAmount: 0
   });
+
+  const [showTimeSlots, setShowTimeSlots] = useState(false);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<{ startTime: string; endTime: string } | undefined>();
 
   // Get booking data from location state (if coming from facility detail)
   const bookingData = location.state?.bookingData as BookingDetails | undefined;
@@ -75,12 +80,7 @@ const CreateBooking: React.FC = () => {
         calculatedEndTime = endTime.toTimeString().slice(0, 5);
       }
       
-      console.log('Booking data received:', bookingData);
-      console.log('Duration:', duration);
-      console.log('Base price:', basePrice);
-      console.log('Passed totalAmount:', bookingData.totalAmount);
-      console.log('Calculated total:', calculatedTotal);
-      console.log('Calculated endTime:', calculatedEndTime);
+      
       
       setFormData({
         courtId: bookingData.courtId || '',
@@ -173,6 +173,15 @@ const CreateBooking: React.FC = () => {
     }
   }, [formData.duration, formData.courtId, bookingData?.pricePerHour, currentFacility?.pricing?.basePrice, currentFacility?.courts]);
 
+  const handleTimeSlotSelect = (startTime: string, endTime: string) => {
+    setFormData(prev => ({
+      ...prev,
+      startTime,
+      endTime
+    }));
+    setSelectedTimeSlot({ startTime, endTime });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -204,17 +213,15 @@ const CreateBooking: React.FC = () => {
 
     try {
       const bookingData = {
-        ...(formData.courtId && { courtId: formData.courtId }),
-        ...(facilityId && !formData.courtId && { facilityId: facilityId }),
+        courtId: formData.courtId || '',
+        facilityId: facilityId || '',
         date: formData.date,
         startTime: formData.startTime,
         endTime: formData.endTime,
         totalAmount: formData.totalAmount
       };
       
-      console.log('Submitting booking data:', bookingData);
-      console.log('Form data state:', formData);
-      console.log('Facility ID from URL:', facilityId);
+      
       
       await dispatch(createBooking(bookingData)).unwrap();
       
@@ -261,10 +268,10 @@ const CreateBooking: React.FC = () => {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Booking Form */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-7">
             <motion.form
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -272,6 +279,24 @@ const CreateBooking: React.FC = () => {
               className="bg-white rounded-2xl shadow-sm border p-6"
             >
               <h2 className="text-xl font-bold text-qc-text mb-6">Booking Details</h2>
+              
+              {/* Weather Note */}
+              {(bookingData || currentFacility) && (
+                <div className="mb-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-blue-100 rounded-full flex-shrink-0">
+                      <span className="text-blue-600 text-lg">🌤️</span>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-blue-900 text-lg mb-2">Weather Check</h4>
+                      <p className="text-blue-700 leading-relaxed">
+                        Check the weather widget on the right to see if conditions are ideal for your sport. 
+                        We'll suggest the best activities based on current weather conditions.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
               
               <div className="space-y-6">
                 {/* Court Selection */}
@@ -365,6 +390,31 @@ const CreateBooking: React.FC = () => {
                     required
                   />
                 </div>
+
+                {/* Available Time Slots */}
+                {formData.date && (formData.courtId || (currentFacility && currentFacility.courts && currentFacility.courts.length > 0)) && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-semibold text-qc-text">Available Time Slots</h3>
+                      <button
+                        type="button"
+                        onClick={() => setShowTimeSlots(!showTimeSlots)}
+                        className="text-sm text-qc-primary hover:text-qc-primary/80 transition-colors"
+                      >
+                        {showTimeSlots ? 'Hide' : 'Show'} Available Slots
+                      </button>
+                    </div>
+                    
+                    {showTimeSlots && (
+                      <AvailableTimeSlots
+                        courtId={formData.courtId || (currentFacility?.courts?.[0]?._id || '')}
+                        selectedDate={formData.date}
+                        onTimeSlotSelect={handleTimeSlotSelect}
+                        selectedTimeSlot={selectedTimeSlot}
+                      />
+                    )}
+                  </div>
+                )}
 
                 {/* Time Selection */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -462,70 +512,83 @@ const CreateBooking: React.FC = () => {
             </motion.form>
           </div>
 
-          {/* Booking Summary */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-sm border p-6">
-              <h3 className="font-semibold text-qc-text mb-4">Booking Summary</h3>
+          {/* Right Sidebar */}
+          <div className="lg:col-span-5">
+            <div className="space-y-6">
+              {/* Weather Widget */}
+              {(bookingData || currentFacility) && (
+                <WeatherWidget 
+                  city={
+                    bookingData?.facilityLocation || 
+                    (currentFacility ? `${currentFacility.location.city}, ${currentFacility.location.state}` : '')
+                  }
+                />
+              )}
+
+              {/* Booking Summary */}
+              <div className="bg-white rounded-2xl shadow-sm border p-6">
+                <h3 className="font-semibold text-qc-text mb-4">Booking Summary</h3>
               
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <User className="w-5 h-5 text-gray-500" />
-                  <div>
-                    <p className="text-sm font-medium text-qc-text">{user?.name}</p>
-                    <p className="text-xs text-gray-600">{user?.email}</p>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <User className="w-5 h-5 text-gray-500" />
+                    <div>
+                      <p className="text-sm font-medium text-qc-text">{user?.name}</p>
+                      <p className="text-xs text-gray-600">{user?.email}</p>
+                    </div>
                   </div>
-                </div>
 
-                {(bookingData || currentFacility) && (
-                  <>
-                    <div className="flex items-center gap-3">
-                      <Building2 className="w-5 h-5 text-gray-500" />
-                      <div>
-                        <p className="text-sm font-medium text-qc-text">
-                          {bookingData?.facilityName || currentFacility?.name}
-                        </p>
-                        <p className="text-xs text-gray-600">
-                          {bookingData?.facilityLocation || `${currentFacility?.location.city}, ${currentFacility?.location.state}`}
-                        </p>
+                  {(bookingData || currentFacility) && (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <Building2 className="w-5 h-5 text-gray-500" />
+                        <div>
+                          <p className="text-sm font-medium text-qc-text">
+                            {bookingData?.facilityName || currentFacility?.name}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            {bookingData?.facilityLocation || `${currentFacility?.location.city}, ${currentFacility?.location.state}`}
+                          </p>
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-3">
-                      <Calendar className="w-5 h-5 text-gray-500" />
-                      <div>
-                        <p className="text-sm font-medium text-qc-text">Date</p>
-                        <p className="text-xs text-gray-600">{formData.date || 'Not selected'}</p>
+                      <div className="flex items-center gap-3">
+                        <Calendar className="w-5 h-5 text-gray-500" />
+                        <div>
+                          <p className="text-sm font-medium text-qc-text">Date</p>
+                          <p className="text-xs text-gray-600">{formData.date || 'Not selected'}</p>
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-3">
-                      <Clock className="w-5 h-5 text-gray-500" />
-                      <div>
-                        <p className="text-sm font-medium text-qc-text">Time</p>
-                        <p className="text-xs text-gray-600">
-                          {formData.startTime ? `${formData.startTime} (${formData.duration} hour${formData.duration > 1 ? 's' : ''})` : 'Not selected'}
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <Clock className="w-5 h-5 text-gray-500" />
+                        <div>
+                          <p className="text-sm font-medium text-qc-text">Time</p>
+                          <p className="text-xs text-gray-600">
+                            {formData.startTime ? `${formData.startTime} (${formData.duration} hour${formData.duration > 1 ? 's' : ''})` : 'Not selected'}
+                          </p>
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-3">
-                      <DollarSign className="w-5 h-5 text-gray-500" />
-                      <div>
-                        <p className="text-sm font-medium text-qc-text">Total</p>
-                        <p className="text-xs text-gray-600">₹{formData.totalAmount}</p>
+                      <div className="flex items-center gap-3">
+                        <DollarSign className="w-5 h-5 text-gray-500" />
+                        <div>
+                          <p className="text-sm font-medium text-qc-text">Total</p>
+                          <p className="text-xs text-gray-600">₹{formData.totalAmount}</p>
+                        </div>
                       </div>
-                    </div>
-                  </>
-                )}
+                    </>
+                  )}
 
-                <div className="border-t pt-4">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    <span>Booking will be confirmed immediately</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600 mt-2">
-                    <AlertCircle className="w-4 h-4 text-yellow-500" />
-                    <span>Free cancellation up to 2 hours before</span>
+                  <div className="border-t pt-4">
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      <span>Booking will be confirmed immediately</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600 mt-2">
+                      <AlertCircle className="w-4 h-4 text-yellow-500" />
+                      <span>Free cancellation up to 2 hours before</span>
+                    </div>
                   </div>
                 </div>
               </div>

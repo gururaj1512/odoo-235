@@ -6,6 +6,8 @@ export interface User {
   phone?: string;
   avatar?: string;
   isEmailVerified: boolean;
+  isActive?: boolean;
+  isVerified?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -44,6 +46,18 @@ export interface Facility {
   };
   amenities?: string[];
   courts?: Court[];
+  operatingHours?: {
+    [key: string]: string;
+  };
+  contact?: {
+    phone?: string;
+    email?: string;
+    website?: string;
+  };
+  rating?: number;
+  reviews?: any[];
+  totalReviews?: number;
+  averageRating?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -90,6 +104,14 @@ export interface ApiResponse<T> {
   success: boolean;
   data: T;
   count?: number;
+  totalCount?: number;
+  pagination?: {
+    currentPage: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+    limit: number;
+  };
   error?: string;
   message?: string;
   token?: string;
@@ -177,6 +199,19 @@ export interface Sport {
   icon: string;
   isActive: boolean;
   popularity: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Rating {
+  _id: string;
+  facility: string;
+  user: {
+    _id: string;
+    name: string;
+  };
+  rating: number;
+  review: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,7 +1,10 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import { IFacility } from '../types';
 
-export interface IFacilityDocument extends IFacility, Document {}
+export interface IFacilityDocument extends IFacility, Document {
+  averageRating?: number;
+  totalReviews?: number;
+}
 
 const facilitySchema = new Schema<IFacilityDocument>({
   name: {
@@ -104,6 +107,26 @@ facilitySchema.virtual('courts', {
   localField: '_id',
   foreignField: 'facility',
   justOne: false
+});
+
+// Virtual for ratings
+facilitySchema.virtual('ratings', {
+  ref: 'Rating',
+  localField: '_id',
+  foreignField: 'facility',
+  justOne: false
+});
+
+// Virtual for average rating
+facilitySchema.virtual('averageRating').get(function(this: any) {
+  if (!this.ratings || this.ratings.length === 0) return 0;
+  const totalRating = this.ratings.reduce((sum: number, rating: any) => sum + rating.rating, 0);
+  return Math.round((totalRating / this.ratings.length) * 10) / 10; // Round to 1 decimal place
+});
+
+// Virtual for total reviews count
+facilitySchema.virtual('totalReviews').get(function(this: any) {
+  return this.ratings ? this.ratings.length : 0;
 });
 
 export default mongoose.model<IFacilityDocument>('Facility', facilitySchema);

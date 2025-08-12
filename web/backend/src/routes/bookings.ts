@@ -6,7 +6,8 @@ import {
   cancelBooking,
   updateBookingStatus,
   getOwnerBookings,
-  getOwnerBookingAnalytics
+  getOwnerBookingAnalytics,
+  getAvailableTimeSlots
 } from '../controllers/bookings';
 import { protect, authorize } from '../middleware/auth';
 
@@ -30,6 +31,9 @@ router.route('/:id/cancel')
 router.get('/owner', authorize('Owner'), getOwnerBookings);
 router.get('/owner/analytics', authorize('Owner'), getOwnerBookingAnalytics);
 router.put('/:id/status', authorize('Owner'), updateBookingStatus);
+
+// Available time slots (public route)
+router.get('/available-slots/:courtId', getAvailableTimeSlots);
 
 // Facility-specific bookings
 router.get('/facility/:facilityId', getBookings);

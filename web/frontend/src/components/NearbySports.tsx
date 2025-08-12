@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from "@react-google-maps/api";
 import { MapPin, Star, Clock, Navigation, Filter } from "lucide-react";
 
-const mapsApi = "AIzaSyDCEDPDZZy5tkTMk1nGNlhkdvknnYk5Gyg";
+const mapsApi = "AIzaSyBIOC5weP0UHUucbi4EwAMAk-ollFzJ5nA";
 
 const containerStyle = {
   width: "100%",

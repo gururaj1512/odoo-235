@@ -82,6 +82,7 @@ const Profile: React.FC = () => {
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'bookings', label: 'My Bookings', icon: Calendar },
+    { id: 'nearby-sports', label: 'Nearby Sports', icon: MapPin },
     ...(user?.role === 'Owner' ? [{ id: 'facilities', label: 'My Facilities', icon: Building2 }] : []),
     ...(user?.role === 'Admin' ? [{ id: 'admin', label: 'Admin Panel', icon: Settings }] : [])
   ];
@@ -137,12 +138,18 @@ const Profile: React.FC = () => {
                   return (
                     <button
                       key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
                       className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors ${
                         activeTab === tab.id
                           ? 'bg-qc-primary text-white'
                           : 'text-gray-600 hover:bg-gray-100'
                       }`}
+                      onClick={() => {
+                        if (tab.id === 'nearby-sports') {
+                          window.location.href = '/nearby-sports';
+                        } else {
+                          setActiveTab(tab.id);
+                        }
+                      }}
                     >
                       <Icon className="w-5 h-5" />
                       <span className="font-medium">{tab.label}</span>
@@ -262,7 +269,7 @@ const Profile: React.FC = () => {
                           <div>
                             <p className="text-sm text-gray-600">Email Verified</p>
                             <p className="font-medium text-qc-text">
-                              {user?.isEmailVerified ? 'Yes' : 'No'}
+                              {user?.isVerified ? 'Yes' : 'No'}
                             </p>
                           </div>
                         </div>
@@ -310,16 +317,7 @@ const Profile: React.FC = () => {
                   </div>
                 )}
 
-                {activeTab === 'admin' && user?.role === 'Admin' && (
-                  <div className="bg-white rounded-2xl shadow-sm border p-6">
-                    <h3 className="text-xl font-bold text-qc-text mb-6">Admin Panel</h3>
-                    <div className="text-center py-12">
-                      <Settings className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <h4 className="text-lg font-medium text-gray-600 mb-2">Admin features coming soon</h4>
-                      <p className="text-gray-500">User management and facility approval features will be available here</p>
-                    </div>
-                  </div>
-                )}
+
               </motion.div>
             </AnimatePresence>
           </div>

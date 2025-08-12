@@ -18,6 +18,7 @@ import courts from './routes/courts';
 import bookings from './routes/bookings';
 import sports from './routes/sports';
 import admin from './routes/admin';
+import ratings from './routes/rating';
 
 import { notFound, errorHandler } from './middleware/error';
 
@@ -42,7 +43,7 @@ app.use(cors({
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 10 * 60 * 1000,
-  max: 100
+  max: 10000
 });
 app.use('/api/', limiter);
 
@@ -58,6 +59,7 @@ app.use('/api/courts', courts);
 app.use('/api/bookings', bookings);
 app.use('/api/sports', sports);
 app.use('/api/admin', admin);
+app.use('/api/ratings', ratings);
 
 app.get('/api/health', (req, res) => {
   res.status(200).json({

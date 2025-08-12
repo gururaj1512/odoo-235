@@ -178,9 +178,26 @@ export const getFacility = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
+    // Calculate average rating and total reviews
+    const Rating = require('../models/Rating').default;
+    const avgRating = await Rating.aggregate([
+      { $match: { facility: facility._id } },
+      { $group: { _id: null, averageRating: { $avg: '$rating' } } }
+    ]);
+
+    const averageRating = avgRating.length > 0 ? Math.round(avgRating[0].averageRating * 10) / 10 : 0;
+    const totalRatings = await Rating.countDocuments({ facility: facility._id });
+
+    // Add rating data to facility object
+    const facilityWithRatings = {
+      ...facility.toObject(),
+      averageRating,
+      totalRatings
+    };
+
     res.status(200).json({
       success: true,
-      data: facility
+      data: facilityWithRatings
     });
   } catch (error: any) {
     res.status(400).json({

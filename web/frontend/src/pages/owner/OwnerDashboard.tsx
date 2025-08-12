@@ -17,59 +17,79 @@ import {
   Edit,
   Trash2,
   Star,
-  MapPin
+  MapPin,
+  ExternalLink
 } from 'lucide-react';
 import { AppDispatch, RootState } from '@/redux/store';
 import { fetchFacilities } from '@/redux/slices/facilitySlice';
-import { fetchBookings } from '@/redux/slices/bookingSlice';
+import { fetchOwnerBookings, fetchOwnerAnalytics } from '@/redux/slices/bookingSlice';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 const OwnerDashboard: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
   const { facilities, loading: facilitiesLoading } = useSelector((state: RootState) => state.facilities);
-  const { bookings, loading: bookingsLoading } = useSelector((state: RootState) => state.bookings);
+  const { ownerBookings, analytics } = useSelector((state: RootState) => state.bookings);
   
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedPeriod, setSelectedPeriod] = useState('week');
 
   useEffect(() => {
     if (user?.role === 'Owner') {
-      dispatch(fetchFacilities());
-      dispatch(fetchBookings());
+      dispatch(fetchFacilities({}));
+      dispatch(fetchOwnerBookings());
+      dispatch(fetchOwnerAnalytics({ period: selectedPeriod as 'week' | 'month' | 'year' }));
     }
-  }, [dispatch, user]);
+  }, [dispatch, user, selectedPeriod]);
 
   // Calculate KPIs
-  const totalBookings = bookings.length;
-  const activeCourts = facilities.reduce((acc, facility) => acc + (facility.courts?.length || 0), 0);
-  const totalEarnings = bookings.reduce((acc, booking) => acc + booking.totalAmount, 0);
-  const pendingBookings = bookings.filter(booking => booking.status === 'Pending').length;
+  const totalBookings = ownerBookings.bookings.length;
+  const activeCourts = facilities.reduce((acc: number, facility: any) => acc + (facility.courts?.length || 0), 0);
+  const totalEarnings = ownerBookings.bookings.reduce((acc: number, booking: any) => acc + (booking.totalAmount || 0), 0);
+  const pendingBookings = ownerBookings.bookings.filter((booking: any) => booking.status === 'Pending').length;
 
-  // Mock data for charts
-  const bookingTrends = [
-    { day: 'Mon', bookings: 12, earnings: 2400 },
-    { day: 'Tue', bookings: 19, earnings: 3800 },
-    { day: 'Wed', bookings: 15, earnings: 3000 },
-    { day: 'Thu', bookings: 22, earnings: 4400 },
-    { day: 'Fri', bookings: 28, earnings: 5600 },
-    { day: 'Sat', bookings: 35, earnings: 7000 },
-    { day: 'Sun', bookings: 18, earnings: 3600 },
-  ];
+  // Use analytics data if available, otherwise calculate from bookings
+  const bookingTrends = analytics.bookingTrends.length > 0 ? analytics.bookingTrends : (() => {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return days.map(day => {
+      const dayBookings = [...ownerBookings.bookings].filter((booking: any) => {
+        const bookingDate = new Date(booking.date);
+        const dayName = bookingDate.toLocaleDateString('en-US', { weekday: 'short' });
+        return dayName === day;
+      });
+      
+      return {
+        day,
+        bookings: dayBookings.length,
+        earnings: dayBookings.reduce((sum: number, booking: any) => sum + (booking.totalAmount || 0), 0)
+      };
+    });
+  })();
 
-  const peakHours = [
-    { hour: '6AM', bookings: 2 },
-    { hour: '8AM', bookings: 5 },
-    { hour: '10AM', bookings: 8 },
-    { hour: '12PM', bookings: 12 },
-    { hour: '2PM', bookings: 15 },
-    { hour: '4PM', bookings: 18 },
-    { hour: '6PM', bookings: 22 },
-    { hour: '8PM', bookings: 16 },
-    { hour: '10PM', bookings: 8 },
-  ];
+  // Calculate real peak hours from actual data
+  const getPeakHours = () => {
+    const hours = ['6AM', '8AM', '10AM', '12PM', '2PM', '4PM', '6PM', '8PM', '10PM'];
+    return hours.map(hour => {
+      const hourBookings = [...ownerBookings.bookings].filter((booking: any) => {
+        const startHour = parseInt(booking.startTime.split(':')[0]);
+        const hourNum = parseInt(hour.replace(/[^0-9]/g, ''));
+        return startHour === hourNum;
+      });
+      
+      return {
+        hour,
+        bookings: hourBookings.length
+      };
+    });
+  };
+
+  const peakHours = getPeakHours();
 
   const handleTabClick = (tabId: string) => {
+    if (tabId === 'nearby-sports') {
+      window.location.href = '/nearby-sports';
+      return;
+    }
     setActiveTab(tabId);
   };
 
@@ -89,7 +109,7 @@ const OwnerDashboard: React.FC = () => {
     }
   };
 
-  if (facilitiesLoading || bookingsLoading) return <LoadingSpinner />;
+  if (facilitiesLoading || ownerBookings.loading) return <LoadingSpinner />;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -127,8 +147,7 @@ const OwnerDashboard: React.FC = () => {
                   { id: 'overview', label: 'Overview', icon: BarChart3 },
                   { id: 'facilities', label: 'Facilities', icon: Building2 },
                   { id: 'bookings', label: 'Bookings', icon: BookOpen },
-                  { id: 'courts', label: 'Court Management', icon: Settings },
-                  { id: 'analytics', label: 'Analytics', icon: TrendingUp },
+                  { id: 'nearby-sports', label: 'Nearby Sports', icon: MapPin },
                 ].map((tab) => {
                   const Icon = tab.icon;
                   return (
@@ -147,6 +166,22 @@ const OwnerDashboard: React.FC = () => {
                   );
                 })}
               </nav>
+
+              {/* External Sports Website Button */}
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <motion.button
+                  onClick={() => window.open('https://sports-befe.vercel.app', '_blank')}
+                  className="w-full flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <ExternalLink className="w-5 h-5" />
+                  <div className="flex-1 text-left">
+                    <p className="font-medium">Sports Hub</p>
+                    <p className="text-xs opacity-90">Explore More Sports</p>
+                  </div>
+                </motion.button>
+              </div>
             </div>
           </div>
 
@@ -250,20 +285,24 @@ const OwnerDashboard: React.FC = () => {
                           </select>
                         </div>
                         <div className="h-64 flex items-end justify-between gap-2">
-                          {bookingTrends.map((day, index) => (
-                            <div key={day.day} className="flex-1 flex flex-col items-center">
-                              <div className="w-full bg-gray-200 rounded-t-lg relative">
-                                <div
-                                  className="bg-qc-primary rounded-t-lg transition-all duration-500"
-                                  style={{ 
-                                    height: `${(day.bookings / 35) * 100}%`,
-                                    animationDelay: `${index * 100}ms`
-                                  }}
-                                />
+                          {bookingTrends.map((day, index) => {
+                            const maxBookings = Math.max(...bookingTrends.map(d => d.bookings), 1);
+                            return (
+                              <div key={day.day} className="flex-1 flex flex-col items-center">
+                                <div className="w-full bg-gray-200 rounded-t-lg relative">
+                                  <div
+                                    className="bg-qc-primary rounded-t-lg transition-all duration-500"
+                                    style={{ 
+                                      height: `${(day.bookings / maxBookings) * 100}%`,
+                                      animationDelay: `${index * 100}ms`
+                                    }}
+                                  />
+                                </div>
+                                <p className="text-xs text-gray-600 mt-2">{day.day}</p>
+                                <p className="text-xs text-gray-500">{day.bookings}</p>
                               </div>
-                              <p className="text-xs text-gray-600 mt-2">{day.day}</p>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
 
@@ -271,18 +310,21 @@ const OwnerDashboard: React.FC = () => {
                       <div className="bg-white rounded-2xl shadow-sm border p-6">
                         <h3 className="text-lg font-bold text-qc-text mb-6">Peak Booking Hours</h3>
                         <div className="space-y-3">
-                          {peakHours.map((hour) => (
-                            <div key={hour.hour} className="flex items-center gap-3">
-                              <span className="text-sm text-gray-600 w-12">{hour.hour}</span>
-                              <div className="flex-1 bg-gray-200 rounded-full h-2">
-                                <div
-                                  className="bg-qc-accent h-2 rounded-full transition-all duration-500"
-                                  style={{ width: `${(hour.bookings / 22) * 100}%` }}
-                                />
+                          {peakHours.map((hour) => {
+                            const maxBookings = Math.max(...peakHours.map(h => h.bookings), 1);
+                            return (
+                              <div key={hour.hour} className="flex items-center gap-3">
+                                <span className="text-sm text-gray-600 w-12">{hour.hour}</span>
+                                <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                  <div
+                                    className="bg-qc-accent h-2 rounded-full transition-all duration-500"
+                                    style={{ width: `${(hour.bookings / maxBookings) * 100}%` }}
+                                  />
+                                </div>
+                                <span className="text-sm text-gray-600 w-8">{hour.bookings}</span>
                               </div>
-                              <span className="text-sm text-gray-600 w-8">{hour.bookings}</span>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
@@ -391,7 +433,7 @@ const OwnerDashboard: React.FC = () => {
                 {activeTab === 'bookings' && (
                   <div className="bg-white rounded-2xl shadow-sm border p-6">
                     <h3 className="text-xl font-bold text-qc-text mb-6">Recent Bookings</h3>
-                    {bookings.length === 0 ? (
+                    {ownerBookings.bookings.length === 0 ? (
                       <div className="text-center py-12">
                         <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                         <h4 className="text-lg font-medium text-gray-600 mb-2">No bookings yet</h4>
@@ -399,7 +441,7 @@ const OwnerDashboard: React.FC = () => {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {bookings.slice(0, 5).map((booking) => (
+                        {ownerBookings.bookings.slice(0, 5).map((booking: any) => (
                           <div key={booking._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
                             <div>
                               <h4 className="font-medium text-qc-text">{booking.facility.name}</h4>
@@ -424,27 +466,7 @@ const OwnerDashboard: React.FC = () => {
                   </div>
                 )}
 
-                {activeTab === 'courts' && (
-                  <div className="bg-white rounded-2xl shadow-sm border p-6">
-                    <h3 className="text-xl font-bold text-qc-text mb-6">Court Management</h3>
-                    <div className="text-center py-12">
-                      <Settings className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <h4 className="text-lg font-medium text-gray-600 mb-2">Court management coming soon</h4>
-                      <p className="text-gray-500">Add, edit, and manage your courts from here</p>
-                    </div>
-                  </div>
-                )}
 
-                {activeTab === 'analytics' && (
-                  <div className="bg-white rounded-2xl shadow-sm border p-6">
-                    <h3 className="text-xl font-bold text-qc-text mb-6">Analytics</h3>
-                    <div className="text-center py-12">
-                      <TrendingUp className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <h4 className="text-lg font-medium text-gray-600 mb-2">Analytics dashboard coming soon</h4>
-                      <p className="text-gray-500">Detailed analytics and insights will be available here</p>
-                    </div>
-                  </div>
-                )}
               </motion.div>
             </AnimatePresence>
           </div>

@@ -30,12 +30,7 @@ const VoiceNavigation: React.FC<VoiceNavigationProps> = ({ isOpen, onClose, onNa
       action: '/',
       keywords: ['home', 'main', 'landing', 'start']
     },
-    {
-      command: 'go to nearby sports',
-      description: 'Open the nearby sports map',
-      action: '/nearby-sports',
-      keywords: ['nearby', 'sports', 'map', 'venues', 'facilities']
-    },
+
     {
       command: 'go to facilities',
       description: 'View all sports facilities',
@@ -84,12 +79,7 @@ const VoiceNavigation: React.FC<VoiceNavigationProps> = ({ isOpen, onClose, onNa
       action: 'help',
       keywords: ['help', 'commands', 'what can I say', 'instructions']
     },
-    {
-      command: 'go to voice demo',
-      description: 'Open voice navigation demo page',
-      action: '/voice-demo',
-      keywords: ['voice demo', 'demo', 'voice navigation demo', 'voice tutorial']
-    }
+
   ];
 
   // Initialize speech recognition

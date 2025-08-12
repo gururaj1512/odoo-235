@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import Facility from '../models/Facility';
-import User from '../models/User';
+import User, { IUserDocument } from '../models/User';
 import Booking from '../models/Booking';
 import Court from '../models/Court';
 import { AuthRequest } from '../types';
@@ -239,8 +239,10 @@ export const updateUserStatus = async (req: AuthRequest, res: Response): Promise
       return;
     }
 
+    const userDoc = user as IUserDocument & { _id: string };
+
     // Prevent admin from banning themselves
-    if ((user as any)._id.toString() === req.user!._id.toString()) {
+    if (userDoc._id.toString() === req.user!._id.toString()) {
       res.status(400).json({
         success: false,
         error: 'Cannot ban yourself'
@@ -248,7 +250,7 @@ export const updateUserStatus = async (req: AuthRequest, res: Response): Promise
       return;
     }
 
-    (user as any).isActive = status === 'active';
+    userDoc.isActive = status === 'active';
     await user.save();
 
     const updatedUser = await User.findById(userId).select('-password');
@@ -256,6 +258,182 @@ export const updateUserStatus = async (req: AuthRequest, res: Response): Promise
     res.status(200).json({
       success: true,
       data: updatedUser
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+// @desc    Verify or unverify user
+// @route   PUT /api/admin/users/:id/verify
+// @access  Private (Admin only)
+export const verifyUser = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { isVerified, verificationReason } = req.body;
+    const userId = req.params.id;
+
+    if (typeof isVerified !== 'boolean') {
+      res.status(400).json({
+        success: false,
+        error: 'isVerified must be a boolean value'
+      });
+      return;
+    }
+
+    const user = await User.findById(userId) as IUserDocument | null;
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+      return;
+    }
+
+    user.isVerified = isVerified;
+    if (verificationReason) {
+      user.verificationReason = verificationReason;
+    }
+
+    await user.save();
+
+    const updatedUser = await User.findById(userId).select('-password');
+
+    res.status(200).json({
+      success: true,
+      data: updatedUser
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+// @desc    Update user details
+// @route   PUT /api/admin/users/:id
+// @access  Private (Admin only)
+export const updateUser = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { name, email, phone, role } = req.body;
+    const userId = req.params.id;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+      return;
+    }
+
+    const userDoc = user as IUserDocument & { _id: string };
+
+    // Prevent admin from changing their own role
+    if (userDoc._id.toString() === req.user!._id.toString() && role && role !== userDoc.role) {
+      res.status(400).json({
+        success: false,
+        error: 'Cannot change your own role'
+      });
+      return;
+    }
+
+    // Update user fields
+    if (name) user.name = name;
+    if (email) user.email = email;
+    if (phone !== undefined) user.phone = phone;
+    if (role && ['User', 'Owner', 'Admin'].includes(role)) {
+      user.role = role;
+    }
+
+    await user.save();
+
+    const updatedUser = await User.findById(userId).select('-password');
+
+    res.status(200).json({
+      success: true,
+      data: updatedUser
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+// @desc    Delete user
+// @route   DELETE /api/admin/users/:id
+// @access  Private (Admin only)
+export const deleteUser = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.params.id;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+      return;
+    }
+
+    const userDoc = user as IUserDocument & { _id: string };
+
+    // Prevent admin from deleting themselves
+    if (userDoc._id.toString() === req.user!._id.toString()) {
+      res.status(400).json({
+        success: false,
+        error: 'Cannot delete yourself'
+      });
+      return;
+    }
+
+    // Delete user's facilities if they are an owner
+    if (user.role === 'Owner') {
+      await Facility.deleteMany({ owner: userId });
+    }
+
+    // Delete user's bookings
+    await Booking.deleteMany({ user: userId });
+
+    // Delete the user
+    await User.findByIdAndDelete(userId);
+
+    res.status(200).json({
+      success: true,
+      message: 'User deleted successfully'
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+// @desc    Get user details
+// @route   GET /api/admin/users/:id
+// @access  Private (Admin only)
+export const getUserDetails = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.params.id;
+
+    const user = await User.findById(userId).select('-password');
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: user
     });
   } catch (error: any) {
     res.status(400).json({

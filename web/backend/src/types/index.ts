@@ -3,7 +3,12 @@ export interface IUser {
   email: string;
   password: string;
   role: 'User' | 'Owner' | 'Admin';
+  phone?: string;
+  avatar?: string;
   isEmailVerified: boolean;
+  isActive?: boolean;
+  isVerified?: boolean;
+  verificationReason?: string;
   resetPasswordToken?: string;
   resetPasswordExpire?: Date;
   createdAt: Date;
@@ -37,6 +42,8 @@ export interface IFacility {
     currency?: string;
   };
   amenities?: string[];
+  averageRating?: number;
+  totalRatings?: number;
 }
 
 export interface ICourt {

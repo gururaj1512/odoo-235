@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from './redux/store';
 import { getMe } from './redux/slices/authSlice';
@@ -21,6 +21,7 @@ import OwnerBookings from './pages/owner/OwnerBookings';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
+import UserManagement from './pages/admin/UserManagement';
 
 // Facility Pages
 import Facilities from './pages/facilities/Facilities';
@@ -28,43 +29,48 @@ import FacilityDetail from './pages/facilities/FacilityDetail';
 import CreateFacility from './pages/facilities/CreateFacility';
 import EditFacility from './pages/facilities/EditFacility';
 
-// Court Pages
-import Courts from './pages/courts/Courts';
-import CreateCourt from './pages/courts/CreateCourt';
-import EditCourt from './pages/courts/EditCourt';
-
 // Booking Pages
 import Bookings from './pages/bookings/Bookings';
 import CreateBooking from './pages/bookings/CreateBooking';
+import VoiceNavigation from './components/VoiceNavigation';
+import VoiceNavigationButton from './components/VoiceNavigationButton';
+import Chatbot from './components/Chatbot';
+import ChatButton from './components/ChatButton';
+import NearbySportsPage from './pages/NearbySportsPage';
 
 // Components
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import Header from './components/common/Header';
 
-const App: React.FC = () => {
-  const dispatch = useDispatch<AppDispatch>();
-  const { isAuthenticated, loading } = useSelector((state: RootState) => state.auth);
+// Inner App Component that uses useNavigate
+const AppContent: React.FC = () => {
+  const navigate = useNavigate();
+  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
+  const [isVoiceNavigationOpen, setIsVoiceNavigationOpen] = useState(false);
 
   useEffect(() => {
-    dispatch(getMe());
-  }, [dispatch]);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'v') {
+        event.preventDefault();
+        setIsVoiceNavigationOpen(true);
+      }
+    };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-qc-primary"></div>
-      </div>
-    );
-  }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
-    <Router>
+    <>
+      <Header />
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} />
-        <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Register />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/nearby-sports" element={<NearbySportsPage />} />
 
         {/* Protected Routes */}
         <Route path="/dashboard" element={
@@ -99,6 +105,12 @@ const App: React.FC = () => {
           </ProtectedRoute>
         } />
 
+        <Route path="/admin/users" element={
+          <ProtectedRoute requiredRole="Admin">
+            <UserManagement />
+          </ProtectedRoute>
+        } />
+
         {/* Facility Routes */}
         <Route path="/facilities" element={<Facilities />} />
         <Route path="/facilities/:id" element={<FacilityDetail />} />
@@ -114,21 +126,7 @@ const App: React.FC = () => {
         } />
 
         {/* Court Routes */}
-        <Route path="/courts" element={
-          <ProtectedRoute requiredRole="Owner">
-            <Courts />
-          </ProtectedRoute>
-        } />
-        <Route path="/facilities/:facilityId/courts/create" element={
-          <ProtectedRoute requiredRole="Owner">
-            <CreateCourt />
-          </ProtectedRoute>
-        } />
-        <Route path="/courts/:id/edit" element={
-          <ProtectedRoute requiredRole="Owner">
-            <EditCourt />
-          </ProtectedRoute>
-        } />
+
 
         {/* Booking Routes */}
         <Route path="/bookings" element={
@@ -142,9 +140,51 @@ const App: React.FC = () => {
           </ProtectedRoute>
         } />
 
+
         {/* Catch all route */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
+      
+      <VoiceNavigationButton onClick={() => setIsVoiceNavigationOpen(true)} />
+      <VoiceNavigation 
+        isOpen={isVoiceNavigationOpen} 
+        onClose={() => setIsVoiceNavigationOpen(false)}
+        onNavigate={(path) => {
+          if (path === 'chatbot') {
+            setIsChatbotOpen(true);
+            setIsVoiceNavigationOpen(false);
+          } else {
+            navigate(path);
+            setIsVoiceNavigationOpen(false);
+          }
+        }}
+      />
+      <ChatButton onClick={() => setIsChatbotOpen(true)} />
+      <Chatbot isOpen={isChatbotOpen} onClose={() => setIsChatbotOpen(false)} />
+    </>
+  );
+};
+
+// Main App Component
+const App: React.FC = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { isAuthenticated, loading } = useSelector((state: RootState) => state.auth);
+
+  useEffect(() => {
+    dispatch(getMe());
+  }, [dispatch, getMe]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-qc-primary"></div>
+      </div>
+    );
+  }
+
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 };

@@ -224,6 +224,9 @@ export const facilityApi = {
     return response.data;
   },
 
+  deleteFacility: async (id: string): Promise<void> => {
+    await api.delete(`/facilities/${id}`);
+  },
 
 };
 
@@ -396,6 +399,11 @@ export const bookingApi = {
     const response = await api.put(`/bookings/${bookingId}/status`, data);
     return response.data;
   },
+
+  getAvailableTimeSlots: async (courtId: string, date: string): Promise<ApiResponse<any>> => {
+    const response = await api.get(`/bookings/available-slots/${courtId}?date=${date}`);
+    return response.data;
+  },
 };
 
 // Admin API
@@ -437,9 +445,52 @@ export const adminApi = {
     return response.data;
   },
 
+  deleteUser: async (userId: string): Promise<ApiResponse<void>> => {
+    const response = await api.delete(`/admin/users/${userId}`);
+    return response.data;
+  },
+
+  updateUser: async (userId: string, data: Partial<User>): Promise<ApiResponse<User>> => {
+    const response = await api.put(`/admin/users/${userId}`, data);
+    return response.data;
+  },
+
+  verifyUser: async (userId: string, data: { isVerified: boolean; verificationReason?: string }): Promise<ApiResponse<User>> => {
+    const response = await api.put(`/admin/users/${userId}/verify`, data);
+    return response.data;
+  },
+
+  getUserDetails: async (userId: string): Promise<ApiResponse<User>> => {
+    const response = await api.get(`/admin/users/${userId}`);
+    return response.data;
+  },
+
   getBookingAnalytics: async (period?: 'week' | 'month' | 'year'): Promise<ApiResponse<any>> => {
     const url = `/admin/analytics/bookings${period ? `?period=${period}` : ''}`;
     const response = await api.get(url);
+    return response.data;
+  },
+};
+
+// Rating API
+export const ratingApi = {
+  addRating: async (data: { facilityId: string; rating: number; review: string }): Promise<ApiResponse<any>> => {
+    const response = await api.post('/ratings', data);
+    return response.data;
+  },
+
+  getFacilityRatings: async (facilityId: string, params?: { page?: number; limit?: number }): Promise<ApiResponse<any>> => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    
+    const url = `/ratings/facility/${facilityId}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await api.get(url);
+    return response.data;
+  },
+
+  deleteRating: async (ratingId: string): Promise<ApiResponse<void>> => {
+    const response = await api.delete(`/ratings/${ratingId}`);
     return response.data;
   },
 };

@@ -72,7 +72,7 @@ export const fetchGlobalStats = createAsyncThunk(
 
 export const fetchPendingFacilities = createAsyncThunk(
   'admin/fetchPendingFacilities',
-  async (params?: { page?: number; limit?: number }, { rejectWithValue }) => {
+  async (params: { page?: number; limit?: number } | undefined, { rejectWithValue }) => {
     try {
       const response = await adminApi.getPendingFacilities(params);
       return response;
@@ -96,7 +96,7 @@ export const updateFacilityApproval = createAsyncThunk(
 
 export const fetchAllUsers = createAsyncThunk(
   'admin/fetchAllUsers',
-  async (params?: { page?: number; limit?: number; role?: string; search?: string }, { rejectWithValue }) => {
+  async (params: { page?: number; limit?: number; role?: string; search?: string } | undefined, { rejectWithValue }) => {
     try {
       const response = await adminApi.getAllUsers(params);
       return response;
@@ -118,9 +118,57 @@ export const updateUserStatus = createAsyncThunk(
   }
 );
 
+export const deleteUser = createAsyncThunk(
+  'admin/deleteUser',
+  async (userId: string, { rejectWithValue }) => {
+    try {
+      await adminApi.deleteUser(userId);
+      return userId;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.error || 'Failed to delete user');
+    }
+  }
+);
+
+export const updateUser = createAsyncThunk(
+  'admin/updateUser',
+  async ({ userId, data }: { userId: string; data: Partial<User> }, { rejectWithValue }) => {
+    try {
+      const response = await adminApi.updateUser(userId, data);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.error || 'Failed to update user');
+    }
+  }
+);
+
+export const verifyUser = createAsyncThunk(
+  'admin/verifyUser',
+  async ({ userId, data }: { userId: string; data: { isVerified: boolean; verificationReason?: string } }, { rejectWithValue }) => {
+    try {
+      const response = await adminApi.verifyUser(userId, data);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.error || 'Failed to verify user');
+    }
+  }
+);
+
+export const getUserDetails = createAsyncThunk(
+  'admin/getUserDetails',
+  async (userId: string, { rejectWithValue }) => {
+    try {
+      const response = await adminApi.getUserDetails(userId);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.error || 'Failed to get user details');
+    }
+  }
+);
+
 export const fetchBookingAnalytics = createAsyncThunk(
   'admin/fetchBookingAnalytics',
-  async (period?: 'week' | 'month' | 'year', { rejectWithValue }) => {
+  async (period: 'week' | 'month' | 'year' | undefined, { rejectWithValue }) => {
     try {
       const response = await adminApi.getBookingAnalytics(period);
       return response;
@@ -204,6 +252,30 @@ const adminSlice = createSlice({
       })
       // Update User Status
       .addCase(updateUserStatus.fulfilled, (state, action) => {
+        // Update the user in the users list
+        const updatedUser = action.payload.data;
+        const userIndex = state.users.users.findIndex(user => user._id === updatedUser._id);
+        if (userIndex !== -1) {
+          state.users.users[userIndex] = updatedUser;
+        }
+      })
+      // Delete User
+      .addCase(deleteUser.fulfilled, (state, action) => {
+        // Remove the deleted user from the users list
+        const deletedUserId = action.payload;
+        state.users.users = state.users.users.filter(user => user._id !== deletedUserId);
+      })
+      // Update User
+      .addCase(updateUser.fulfilled, (state, action) => {
+        // Update the user in the users list
+        const updatedUser = action.payload.data;
+        const userIndex = state.users.users.findIndex(user => user._id === updatedUser._id);
+        if (userIndex !== -1) {
+          state.users.users[userIndex] = updatedUser;
+        }
+      })
+      // Verify User
+      .addCase(verifyUser.fulfilled, (state, action) => {
         // Update the user in the users list
         const updatedUser = action.payload.data;
         const userIndex = state.users.users.findIndex(user => user._id === updatedUser._id);

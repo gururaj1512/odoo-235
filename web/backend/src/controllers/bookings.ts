@@ -224,7 +224,7 @@ export const createBooking = async (req: AuthRequest, res: Response): Promise<vo
     if (conflictingBooking) {
       res.status(400).json({
         success: false,
-        error: 'This time slot is already booked'
+        error: 'Unavailable time slot'
       });
       return;
     }
@@ -490,6 +490,92 @@ export const getOwnerBookings = async (req: AuthRequest, res: Response): Promise
         }, {} as any)
       },
       data: bookings
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+// @desc    Get available time slots for a court
+// @route   GET /api/bookings/available-slots/:courtId
+// @access  Public
+export const getAvailableTimeSlots = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { courtId } = req.params;
+    const { date } = req.query;
+
+    if (!date) {
+      res.status(400).json({
+        success: false,
+        error: 'Date parameter is required'
+      });
+      return;
+    }
+
+    // Get the court
+    const court = await Court.findById(courtId);
+    if (!court) {
+      res.status(404).json({
+        success: false,
+        error: 'Court not found'
+      });
+      return;
+    }
+
+    // Get existing bookings for this court on the specified date
+    const existingBookings = await Booking.find({
+      court: courtId,
+      date: new Date(date as string),
+      status: { $in: ['Pending', 'Confirmed'] }
+    }).sort('startTime');
+
+    // Define operating hours (6 AM to 11 PM)
+    const operatingHours = {
+      start: '06:00',
+      end: '23:00'
+    };
+
+    // Generate all possible time slots (1-hour intervals)
+    const timeSlots = [];
+    const startTime = new Date(`2000-01-01T${operatingHours.start}:00`);
+    const endTime = new Date(`2000-01-01T${operatingHours.end}:00`);
+
+    while (startTime < endTime) {
+      const slotStart = startTime.toTimeString().slice(0, 5);
+      const slotEnd = new Date(startTime.getTime() + 60 * 60 * 1000).toTimeString().slice(0, 5);
+      
+      // Check if this slot conflicts with existing bookings
+      const isAvailable = !existingBookings.some(booking => {
+        return (
+          (booking.startTime < slotEnd && booking.endTime > slotStart) ||
+          (booking.startTime >= slotStart && booking.startTime < slotEnd) ||
+          (booking.endTime > slotStart && booking.endTime <= slotEnd)
+        );
+      });
+
+      timeSlots.push({
+        startTime: slotStart,
+        endTime: slotEnd,
+        isAvailable
+      });
+
+      startTime.setHours(startTime.getHours() + 1);
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        court: {
+          _id: court._id,
+          name: court.name,
+          sportType: court.sportType
+        },
+        date: date,
+        timeSlots
+      }
     });
   } catch (error: any) {
     res.status(400).json({

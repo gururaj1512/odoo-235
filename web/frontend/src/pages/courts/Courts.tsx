@@ -34,7 +34,7 @@ const Courts: React.FC = () => {
 
   useEffect(() => {
     if (user?.role === 'Owner') {
-      dispatch(fetchFacilities());
+      dispatch(fetchFacilities({}));
     }
   }, [dispatch, user]);
 
@@ -68,12 +68,7 @@ const Courts: React.FC = () => {
     navigate(`/courts/${courtId}`);
   };
 
-  const handleDeleteCourt = async (courtId: string) => {
-    if (window.confirm('Are you sure you want to delete this court? This action cannot be undone.')) {
-      // TODO: Implement court deletion
-      toast.success('Court deleted successfully');
-    }
-  };
+
 
   const getSportIcon = (sportType: string) => {
     const icons: { [key: string]: string } = {
@@ -242,13 +237,7 @@ const Courts: React.FC = () => {
                           <Edit className="w-4 h-4" />
                           Edit
                         </button>
-                        <button
-                          onClick={() => handleDeleteCourt(court._id)}
-                          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Delete
-                        </button>
+
                       </div>
                     </div>
                   </motion.div>

@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { X, Clock, DollarSign, MapPin } from 'lucide-react';
+import React, { useState } from 'react';
+import { useSelector } from 'react-redux';
+import { X, DollarSign, MapPin, Clock, Wifi } from 'lucide-react';
+import { RootState } from '@/redux/store';
 
 interface FilterPanelProps {
   onClose: () => void;
@@ -18,13 +20,16 @@ interface FilterPanelProps {
 }
 
 const FilterPanel: React.FC<FilterPanelProps> = ({ onClose, filters, onFiltersChange }) => {
+  const { popularSports } = useSelector((state: RootState) => state.sports);
+  
   const [selectedSports, setSelectedSports] = useState<string[]>(filters.sport ? [filters.sport] : []);
   const [priceRange, setPriceRange] = useState([filters.minPrice || 500, filters.maxPrice || 1500]);
   const [radius, setRadius] = useState(filters.radius || 5);
   const [timeSlot, setTimeSlot] = useState(filters.timeSlot || 'any');
   const [amenities, setAmenities] = useState<string[]>(filters.amenities || []);
 
-  const sports = ['Badminton', 'Tennis', 'Cricket', 'Football', 'Basketball'];
+  // Use sports from Redux state, fallback to common sports if not available
+  const sports = popularSports?.map(sport => sport.name) || ['Badminton', 'Tennis', 'Cricket', 'Football', 'Basketball'];
   const availableAmenities = ['AC', 'Parking', 'Shower', 'Cafe', 'Equipment Rental'];
   const timeSlots = [
     { value: 'any', label: 'Any time' },

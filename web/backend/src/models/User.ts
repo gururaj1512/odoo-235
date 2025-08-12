@@ -8,6 +8,11 @@ export interface IUserDocument extends IUser, Document {
   matchPassword(enteredPassword: string): Promise<boolean>;
   getSignedJwtToken(): string;
   getResetPasswordToken(): string;
+  isActive?: boolean;
+  isVerified?: boolean;
+  verificationReason?: string;
+  phone?: string;
+  avatar?: string;
 }
 
 const userSchema = new Schema<IUserDocument>({
@@ -37,9 +42,27 @@ const userSchema = new Schema<IUserDocument>({
     enum: ['User', 'Owner', 'Admin'],
     default: 'User'
   },
+  phone: {
+    type: String,
+    trim: true
+  },
+  avatar: {
+    type: String
+  },
   isEmailVerified: {
     type: Boolean,
     default: false
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  verificationReason: {
+    type: String
   },
   resetPasswordToken: String,
   resetPasswordExpire: Date

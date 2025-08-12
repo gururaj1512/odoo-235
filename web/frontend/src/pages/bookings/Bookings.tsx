@@ -74,8 +74,11 @@ const Bookings: React.FC = () => {
   };
 
   const filteredBookings = bookings.filter(booking => {
-    const matchesSearch = booking.facility.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         booking.court.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const facilityName = booking.facility?.name || '';
+    const courtName = booking.court?.name || '';
+    
+    const matchesSearch = facilityName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         courtName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
     const matchesDate = dateFilter === 'all' || 
                        (dateFilter === 'upcoming' && new Date(booking.date) > new Date()) ||
@@ -84,8 +87,8 @@ const Bookings: React.FC = () => {
     return matchesSearch && matchesStatus && matchesDate;
   });
 
-  const upcomingBookings = filteredBookings.filter(booking => new Date(booking.date) > new Date());
-  const pastBookings = filteredBookings.filter(booking => new Date(booking.date) < new Date());
+  const upcomingBookings = filteredBookings.filter(booking => booking.date && new Date(booking.date) > new Date());
+  const pastBookings = filteredBookings.filter(booking => booking.date && new Date(booking.date) < new Date());
 
   if (loading) return <LoadingSpinner />;
 
@@ -228,7 +231,7 @@ const Bookings: React.FC = () => {
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Spent</p>
                 <p className="text-2xl font-bold text-qc-text">
-                  ₹{bookings.reduce((sum, booking) => sum + booking.totalAmount, 0).toLocaleString()}
+                  ₹{bookings.reduce((sum, booking) => sum + (booking.totalAmount || 0), 0).toLocaleString()}
                 </p>
               </div>
               <div className="p-3 bg-yellow-100 rounded-lg">
@@ -255,12 +258,12 @@ const Bookings: React.FC = () => {
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
-                        <h3 className="font-semibold text-qc-text mb-1">{booking.facility.name}</h3>
-                        <p className="text-sm text-gray-600 mb-2">{booking.court.name}</p>
+                        <h3 className="font-semibold text-qc-text mb-1">{booking.facility?.name || 'Unknown Facility'}</h3>
+                        <p className="text-sm text-gray-600 mb-2">{booking.court?.name || 'Unknown Court'}</p>
                         <div className="flex items-center gap-4 text-sm text-gray-600">
                           <div className="flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
-                            {new Date(booking.date).toLocaleDateString()}
+                            {booking.date ? new Date(booking.date).toLocaleDateString() : 'No date'}
                           </div>
                           <div className="flex items-center gap-1">
                             <Clock className="w-4 h-4" />
@@ -280,11 +283,11 @@ const Bookings: React.FC = () => {
                       <div className="flex items-center gap-4 text-sm">
                         <div className="flex items-center gap-1">
                           <MapPin className="w-4 h-4 text-gray-500" />
-                          <span className="text-gray-600">{booking.facility.location.city}</span>
+                          <span className="text-gray-600">{booking.facility?.location?.city || 'Unknown Location'}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <DollarSign className="w-4 h-4 text-gray-500" />
-                          <span className="font-medium text-qc-text">₹{booking.totalAmount}</span>
+                          <span className="font-medium text-qc-text">₹{booking.totalAmount || 0}</span>
                         </div>
                       </div>
                       
@@ -323,12 +326,12 @@ const Bookings: React.FC = () => {
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
-                        <h3 className="font-semibold text-qc-text mb-1">{booking.facility.name}</h3>
-                        <p className="text-sm text-gray-600 mb-2">{booking.court.name}</p>
+                        <h3 className="font-semibold text-qc-text mb-1">{booking.facility?.name || 'Unknown Facility'}</h3>
+                        <p className="text-sm text-gray-600 mb-2">{booking.court?.name || 'Unknown Court'}</p>
                         <div className="flex items-center gap-4 text-sm text-gray-600">
                           <div className="flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
-                            {new Date(booking.date).toLocaleDateString()}
+                            {booking.date ? new Date(booking.date).toLocaleDateString() : 'No date'}
                           </div>
                           <div className="flex items-center gap-1">
                             <Clock className="w-4 h-4" />
@@ -348,11 +351,11 @@ const Bookings: React.FC = () => {
                       <div className="flex items-center gap-4 text-sm">
                         <div className="flex items-center gap-1">
                           <MapPin className="w-4 h-4 text-gray-500" />
-                          <span className="text-gray-600">{booking.facility.location.city}</span>
+                          <span className="text-gray-600">{booking.facility?.location?.city || 'Unknown Location'}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <DollarSign className="w-4 h-4 text-gray-500" />
-                          <span className="font-medium text-qc-text">₹{booking.totalAmount}</span>
+                          <span className="font-medium text-qc-text">₹{booking.totalAmount || 0}</span>
                         </div>
                       </div>
                       
